@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Buildalyzer;
 using DockGen.Constants;
+using MediatR;
 
 namespace DockGen.Generator;
 
@@ -136,5 +137,56 @@ public static class DockerfileBuilderHelpers
 
         return true;
     }
+}
 
+// extractor classes using IMediator and CQRS pattern to handle extracting for each property and item
+public sealed record BuildRegistryExtractRequest(IAnalyzerResult AnalyzerResult) : IExtractRequest<string>
+{
+    public sealed class BuildRegistryExtractRequestHandler : IExtractRequestHandler<BuildRegistryExtractRequest, ExtractResult<string>>
+    {
+        public ValueTask<ExtractResult<string>> Handle(BuildRegistryExtractRequest request, CancellationToken cancellationToken)
+        {
+            if (request.AnalyzerResult.Properties.TryGetValue(CustomContainerProperties.ContainerBuildRegistry, out var registry))
+            {
+                return Task.FromResult(registry);
+            }
+
+            return Task.FromResult(ExtractResult<string?>.Failure());
+        }
+    }
+}
+
+// marker interface
+public interface IExtractRequest { }
+
+public interface IExtractRequest<T> : IExtractRequest
+{
+}
+
+public interface IExtractRequestHandler<TRequest, TResponse>
+    where TRequest : IExtractRequest<TResponse>
+{
+    ValueTask<ExtractResult<TResponse>> Handle(TRequest request, CancellationToken? cancellationToken = default);
+}
+
+
+
+
+public sealed class ExtractResult<TValue>
+{
+    private readonly TValue? _value;
+    public bool IsExtracted { get; }
+
+    private ExtractResult(TValue? value, bool isExtracted)
+    {
+        this._value = value;
+        this.IsExtracted = isExtracted;
+    }
+    
+    public TValue Value => this.IsExtracted ? this._value! : throw new InvalidOperationException("Cannot access value when nothing was extracted");
+    
+    public static ExtractResult<TValue?> Success(TValue? value) => new(value, true);
+    public static ExtractResult<TValue?> Failure() => new(default, false);
+    
+    public static implicit operator ExtractResult<TValue?>(TValue? extractedValue) => ExtractResult<TValue?>.Success(extractedValue);
 }

@@ -11,8 +11,9 @@ public sealed class DockerfileBuilder
     public required string ProjectDirectory { get; init; }
     public required string ProjectFile { get; init; }
 
-    public Dictionary<string, string> InitialCopy { get; set; } = new();
+    public Dictionary<string, string> AdditionalCopy { get; set; } = new();
     public Dictionary<string, string> Copy { get; set; } = new();
+    public List<(string Port, string Type)> Expose { get; set; } = new();
     public required string TargetFileName { get; init; }
 
     public string Build()
@@ -42,7 +43,7 @@ public sealed class DockerfileBuilder
         sb.AppendLine("WORKDIR /src");
         sb.AppendLine();
         
-        foreach (var (source, destination) in InitialCopy.OrderBy(x => x.Key))
+        foreach (var (source, destination) in AdditionalCopy.OrderBy(x => x.Key))
         {
             sb.AppendLine($"COPY [\"{NormalizeFilePath(source)}\", \"{NormalizeDirectoryPath(destination)}\"]");
         }

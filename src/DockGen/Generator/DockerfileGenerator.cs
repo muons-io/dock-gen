@@ -84,7 +84,7 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger)
                 ProjectFile = analyzerResult.Analyzer.ProjectFile.Name,
                 WorkDir = "/app",
                 Copy = copyFromTo,
-                InitialCopy = initialCopyFromTo,
+                AdditionalCopy = initialCopyFromTo,
                 TargetFileName = targetFileName
             };
         
