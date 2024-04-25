@@ -5,7 +5,6 @@ using System.CommandLine.Parsing;
 using DockGen.Commands.GenerateCommand;
 using DockGen.Generator;
 using Microsoft.Build.Locator;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 MSBuildLocator.RegisterDefaults();
@@ -19,7 +18,7 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
     hostBuilder.UseCommandHandler<GenerateCommand, GenerateCommandHandler>();
     hostBuilder.ConfigureServices(services =>
     {
-        services.AddSingleton<DockerfileGenerator>();
+        services.AddGeneratorCore();
     });
 })
 .UseDefaults();

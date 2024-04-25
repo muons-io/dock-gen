@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using DockGen.Generator.Models;
 
 namespace DockGen.Generator;
 
@@ -13,7 +14,7 @@ public sealed class DockerfileBuilder
 
     public Dictionary<string, string> AdditionalCopy { get; set; } = new();
     public Dictionary<string, string> Copy { get; set; } = new();
-    public List<(string Port, string Type)> Expose { get; set; } = new();
+    public List<ContainerPort> Expose { get; set; } = new();
     public required string TargetFileName { get; init; }
 
     public string Build()
@@ -33,6 +34,11 @@ public sealed class DockerfileBuilder
         sb.AppendLine($"FROM {BaseImage} AS base");
         sb.AppendLine($"WORKDIR {NormalizeDirectoryPath(WorkDir)}");
         sb.AppendLine();
+        
+        foreach (var port in Expose)
+        {
+            sb.AppendLine($"EXPOSE {port.Port}/{port.Type}");
+        }
         
         return sb;
     }

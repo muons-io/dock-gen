@@ -1,14 +1,18 @@
 ﻿using System.Collections.Concurrent;
 using Buildalyzer;
 using DockGen.Constants;
+using DockGen.Generator.Extractors;
+using DockGen.Generator.Models;
 using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Generator;
 
-public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger)
+public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IExtractor extractor)
 {
     private readonly ILogger<DockerfileGenerator> _logger = logger;
+    private readonly IExtractor _extractor = extractor;
+    
     private readonly ConcurrentDictionary<string, IAnalyzerResult> _analyzerCache = new();
     private readonly ConcurrentDictionary<string, List<string>> _dependencyTree = new();
 
@@ -34,41 +38,44 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger)
                 continue;
             }
             
-            var analyzerResult = _analyzerCache
-                .Single(x => x.Value.ProjectFilePath == currentProjectPath)
-                .Value;
-            if (analyzerResult.Properties.TryGetValue(MSBuildProperties.GeneralProperties.OutputType, out var outputType)
-                && outputType != "Exe")
-            {
-                _logger.LogInformation("Skipping library project {ProjectPath}", currentProjectPath);
-                continue;
-            }
-            
-            if (!DockerfileBuilderHelpers.TryGetBuildImage(analyzerResult, out var buildImage))
-            {
-                _logger.LogError("Failed to get build image");
-                return ExitCodes.Failure;
-            }
-        
-            if (!DockerfileBuilderHelpers.TryGetBaseImage(analyzerResult, out var baseImage))
-            {
-                _logger.LogError("Failed to get base image");
-                return ExitCodes.Failure;
-            }
-            
-            if (!analyzerResult.Properties.TryGetValue(MSBuildProperties.GeneralProperties.TargetFileName, out var targetFileName) || string.IsNullOrEmpty(targetFileName))
-            {
-                _logger.LogError("Failed to get target file name");
-                return ExitCodes.Failure;
-            }
-            
             var projectFileDirectory = Path.GetDirectoryName(currentProjectPath);
             if (projectFileDirectory is null)
             {
                 _logger.LogError("Failed to get project file directory");
                 return ExitCodes.Failure;
             }
-
+            
+            var analyzerResult = _analyzerCache
+                .Single(x => x.Value.ProjectFilePath == currentProjectPath)
+                .Value;
+            var outputTypeResult = await _extractor.Extract(new OutputTypeExtractRequest(analyzerResult), ct);
+            if (!outputTypeResult.Extracted || !outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation("Skipping library project {ProjectPath}", currentProjectPath);
+                continue;
+            }
+            
+            var buildImageResult = await _extractor.Extract(new ContainerBuildImageExtractRequest(analyzerResult), ct);
+            if (!buildImageResult.Extracted)
+            {
+                _logger.LogError("Failed to get build image");
+                return ExitCodes.Failure;
+            }
+            
+            var baseImageResult = await _extractor.Extract(new ContainerBaseImageExtractRequest(analyzerResult), ct);
+            if (!baseImageResult.Extracted)
+            {
+                _logger.LogError("Failed to get base image");
+                return ExitCodes.Failure;
+            }
+            
+            var targetFileNameResult = await _extractor.Extract(new TargetFileNameExtractRequest(analyzerResult), ct);
+            if (!targetFileNameResult.Extracted)
+            {
+                _logger.LogError("Failed to get target file name");
+                return ExitCodes.Failure;
+            }
+            
             var dependencies = _dependencyTree[currentProjectPath];
             
             var copyFromTo = PrepareCopyDictionary(solutionPath, dependencies);
@@ -76,16 +83,19 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger)
             
             var relativeProjectPath = Path.GetRelativePath(solutionPath, projectFileDirectory).Replace("..\\","");
             
+            var containerPorts = await _extractor.Extract(new ContainerPortExtractRequest(analyzerResult), ct);
+            
             var builder = new DockerfileBuilder
             {
-                BaseImage = baseImage,
-                BuildImage = buildImage,
+                BaseImage = baseImageResult.Value,
+                BuildImage = buildImageResult.Value,
                 ProjectDirectory = relativeProjectPath,
                 ProjectFile = analyzerResult.Analyzer.ProjectFile.Name,
                 WorkDir = "/app",
                 Copy = copyFromTo,
                 AdditionalCopy = initialCopyFromTo,
-                TargetFileName = targetFileName
+                TargetFileName = targetFileNameResult.Value,
+                Expose = containerPorts.Extracted ? containerPorts.Value : new List<ContainerPort>()
             };
         
             var dockerfile = builder.Build();

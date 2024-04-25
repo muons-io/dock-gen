@@ -34,6 +34,7 @@ public static class MSBuildProperties
     
         public const string ContainerWorkingDirectory = "ContainerWorkingDirectory";
         public const string ContainerPort = "ContainerPort";
+        
         public const string ContainerEnvironmentVariable = "ContainerEnvironmentVariable";
     
         public const string ContainerAppCommand = "ContainerAppCommand";
@@ -41,6 +42,11 @@ public static class MSBuildProperties
         public const string ContainerDefaultArgs = "ContainerDefaultArgs";
         public const string ContainerAppCommandInstruction = "ContainerAppCommandInstruction";
         public const string ContainerUser = "ContainerUser";
+    }
+
+    public static class ContainerMetadata
+    {
+        public const string ContainerPortType = "Type";
     }
     
     public static class DockerfileProperties

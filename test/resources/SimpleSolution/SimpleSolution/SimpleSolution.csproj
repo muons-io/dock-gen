@@ -7,6 +7,11 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+        <ContainerPort Include="80" Type="tcp" />
+        <ContainerPort Include="6060" Type="udp" />
+    </ItemGroup>
+    
     <ItemGroup Label="ContainerAppCommand Assignment">
         <!-- This is how you would start the dotnet ef tool in your container -->
         <ContainerAppCommand Include="dotnet" />
@@ -15,5 +20,5 @@
         <!-- This shorthand syntax means the same thing, note the semicolon separating the tokens. -->
         <ContainerAppCommand Include="dotnet;ef" />
     </ItemGroup>
-    
+        
 </Project>
