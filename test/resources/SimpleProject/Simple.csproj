@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup Label="ContainerAppCommand Assignment">
+    <!-- This is how you would start the dotnet ef tool in your container -->
+    <ContainerAppCommand Include="dotnet" />
+    <ContainerAppCommand Include="ef" />
+
+    <!-- This shorthand syntax means the same thing, note the semicolon separating the tokens. -->
+    <ContainerAppCommand Include="dotnet;ef" />
+  </ItemGroup>
+  
+</Project>

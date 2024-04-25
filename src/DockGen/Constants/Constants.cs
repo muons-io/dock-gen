@@ -11,4 +11,6 @@ public static class Constants
     public const string DefaultBasePort = "443";
     public const string DefaultBaseRepository = "dotnet/aspnet";
     public const string DefaultBaseFamily = "";
+    
+    public const string DefaultContainerPortType = "tcp";
 }

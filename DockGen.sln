@@ -7,6 +7,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{CD7EFC82-380
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DockGen", "src\DockGen\DockGen.csproj", "{8024FBB6-5143-4414-B0BE-9D7D156E9FA0}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{331C4752-DAEA-439A-9ADC-C105E9D27A03}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "resources", "resources", "{D787EDF7-42B0-4E08-BAAF-9B96AFB0563B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SimpleSolution", "SimpleSolution", "{03EBF8F8-2A0B-465B-8AE7-65C97369DDC0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,6 +29,8 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8024FBB6-5143-4414-B0BE-9D7D156E9FA0} = {CD7EFC82-380F-410A-B103-97161D79BF72}
+		{D787EDF7-42B0-4E08-BAAF-9B96AFB0563B} = {331C4752-DAEA-439A-9ADC-C105E9D27A03}
+		{03EBF8F8-2A0B-465B-8AE7-65C97369DDC0} = {D787EDF7-42B0-4E08-BAAF-9B96AFB0563B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {33FA81F8-720F-4FDB-9360-E69296166558}
