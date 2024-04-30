@@ -60,7 +60,7 @@ public sealed class GenerateCommandHandler : ICommandHandler
         try
         {
             var currentDirectory = Directory.GetCurrentDirectory();
-            var solutionFiles = Directory.GetFiles(currentDirectory, "*.sln*");
+            var solutionFiles = Directory.GetFiles(currentDirectory, "*.sln?");
             if (solutionFiles.Length == 0)
             {
                 _logger.LogError("No solution files found");

@@ -1,10 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
         <OutputType>Exe</OutputType>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>dockgen</ToolCommandName>
-        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <PackageId>dockgen</PackageId>
+        <Version>0.1.0</Version>
+        <Authors>Wiktor Golonka</Authors>
+        <PackageDescription>Dockerfile generator for .NET 8+ apps</PackageDescription>
+        <RepositoryUrl>https://github.com/muons-io/dock-gen</RepositoryUrl>
+        <PackageTags>dockerfile,generate,generator</PackageTags>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -16,4 +24,9 @@
       <PackageReference Include="System.CommandLine.NamingConventionBinder" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="../../README.md" Pack="true" PackagePath="\"/>
+        <None Include="../../LICENSE" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+    
 </Project>
