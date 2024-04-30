@@ -47,9 +47,15 @@ If no solution or project file is specified, dock-gen will try to find a solutio
 - **Multi-Stage Build**: Generate a multi-stage Dockerfile for a project
 - **Central Package/Build Management**: dock-gen supports CPM/CBM in your project
 
+## Roadmap
+
+- [ ] List supported MSBuild properties and items used for Dockerfile customization
+- [ ] Support more advanced Dockerfile customizations
+- [ ] Performance improvements
+
 ## Contributing
 
-We welcome contributions to dock-gen! Please see our [contributing guide](CONTRIBUTING.md) for more details.
+We welcome contributions to dock-gen! 
 
 ## License
 
