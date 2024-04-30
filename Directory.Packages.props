@@ -1,4 +1,8 @@
 <Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  
   <ItemGroup>
     <PackageVersion Include="Buildalyzer" Version="6.0.4" />
     <PackageVersion Include="Microsoft.Build.Locator" Version="1.7.8" />
