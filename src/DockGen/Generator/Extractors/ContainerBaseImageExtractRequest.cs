@@ -16,7 +16,7 @@ public sealed record ContainerBaseImageExtractRequest(IAnalyzerResult AnalyzerRe
 
         public async ValueTask<ExtractResult<string>> Handle(ContainerBaseImageExtractRequest request, CancellationToken cancellationToken = default)
         {
-            if (request.AnalyzerResult.Properties.TryGetValue(CustomContainerProperties.ContainerBuildImage, out var image))
+            if (request.AnalyzerResult.Properties.TryGetValue(MSBuildProperties.ContainerProperties.ContainerBaseImage, out var image))
             {
                 return ExtractResult<string>.Return(image);
             }
