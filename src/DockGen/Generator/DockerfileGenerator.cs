@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using Buildalyzer;
 using DockGen.Constants;
 using DockGen.Generator.Extractors;
@@ -26,7 +27,7 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
         
         var manager = new AnalyzerManager(solutionPath);
         
-        BuildDependencyTree(manager, projectPath, targetFramework);
+        BuildDependencyTree(manager, projectPath, targetFramework, ct);
         
         var projects = manager.SolutionFile.ProjectsInOrder
             .Where(x => x.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
@@ -36,6 +37,12 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
             if (!string.IsNullOrEmpty(projectPath) && currentProjectPath != projectPath)
             {
                 continue;
+            }
+
+            if (ct.IsCancellationRequested)
+            {
+                _logger.LogWarning("Operation cancelled");
+                return ExitCodes.Failure;
             }
             
             var projectFileDirectory = Path.GetDirectoryName(currentProjectPath);
@@ -159,48 +166,58 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
 
         return copyFromTo;
     }
-
-    private void BuildDependencyTree(IAnalyzerManager manager, string? projectPath, string? targetFramework)
+    
+    private void BuildDependencyTree(IAnalyzerManager manager, string? projectPath, string? targetFramework, CancellationToken ct = default)
     {
         var projects = manager.SolutionFile.ProjectsInOrder
             .Where(x => x.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
             .ToList();
 
-        Parallel.ForEach(projects.Select(x => x.AbsolutePath), currentProjectPath =>
+        _logger.LogInformation("Building dependency tree for {ProjectCount} project(s)", projects.Count);
+        
+        ConcurrentStack<string> stack = new();
+        var projectsToAnalyze = projects.Where(x => x.AbsolutePath == projectPath || projectPath is null);
+        foreach(var project in projectsToAnalyze)
         {
-            if (!string.IsNullOrEmpty(projectPath) && currentProjectPath != projectPath)
-            {
-                return;
-            }
-
-            var projectAnalyzer = manager.GetProject(currentProjectPath);
-
-            var projectDependencies = new Dictionary<string, IAnalyzerResult>();
-            EvaluateProjectReferences(ref projectDependencies, manager, targetFramework, projectAnalyzer);
-
-            foreach (var dependency in projectDependencies)
-            {
-                if (_analyzerCache.ContainsKey(dependency.Key))
-                {
-                    continue;
-                }
-
-                _analyzerCache.TryAdd(dependency.Key, dependency.Value);
-            }
-            
-            _dependencyTree.TryAdd(currentProjectPath, projectDependencies.Keys.ToList());
-
-        });
-    }
-
-    private void EvaluateProjectReferences(ref Dictionary<string, IAnalyzerResult> projects, IAnalyzerManager manager, string? targetFramework, IProjectAnalyzer projectAnalyzer)
-    {
-        if (projects.TryGetValue(projectAnalyzer.ProjectFile.Path, out _))
-        {
-            return;
+            stack.Push(project.AbsolutePath);
         }
         
+        while (stack.Count != 0)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var degreeOfParallelism = Environment.ProcessorCount;
+            
+            var projectsToProcess = new string[degreeOfParallelism];
+            stack.TryPopRange(projectsToProcess, 0, int.Min(degreeOfParallelism, stack.Count));
+
+            Parallel.ForEach(projectsToProcess, currentProjectPath =>
+            {
+                if (string.IsNullOrEmpty(currentProjectPath))
+                {
+                    return;
+                }
+                
+                if (_dependencyTree.ContainsKey(currentProjectPath))
+                {
+                    return;
+                }
+            
+                var projectAnalyzer = manager.GetProject(currentProjectPath);
+            
+                ProcessProject(projectAnalyzer, targetFramework, stack);
+            });
+        }
+    }
+
+    private void ProcessProject(IProjectAnalyzer projectAnalyzer, string? targetFramework, ConcurrentStack<string> stack)
+    {
+        _logger.LogInformation("Analyzing project {ProjectPath}...", projectAnalyzer.ProjectFile.Path);
+        var stopWatch = Stopwatch.StartNew();
         var analyzerResults = projectAnalyzer.Build();
+        stopWatch.Stop();
+        _logger.LogInformation("Analyzed project {ProjectPath} in {ElapsedMilliseconds}ms", projectAnalyzer.ProjectFile.Path, stopWatch.ElapsedMilliseconds);
+            
         if (string.IsNullOrEmpty(targetFramework) && analyzerResults.TargetFrameworks.Any())
         {
             targetFramework = analyzerResults.TargetFrameworks.First();
@@ -211,22 +228,21 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
             _logger.LogWarning("Failed to analyze project for target framework {TargetFramework}", targetFramework);
             return;
         }
-        
-        projects.Add(analyzerResult.ProjectFilePath, analyzerResult);
-        
-        foreach (var reference in analyzerResult.ProjectReferences)
+            
+        _analyzerCache.TryAdd(analyzerResult.ProjectFilePath, analyzerResult);
+        _dependencyTree.TryAdd(analyzerResult.ProjectFilePath, analyzerResult.ProjectReferences.ToList());
+            
+        foreach (var dependency in analyzerResult.ProjectReferences)
         {
-            if (projects.ContainsKey(reference))
+            if (_analyzerCache.ContainsKey(dependency))
             {
                 continue;
             }
 
-            var projectDependency = manager.GetProject(reference);
-            
-            EvaluateProjectReferences(ref projects, manager, targetFramework, projectDependency);
+            stack.Push(dependency);
         }
     }
-
+    
     private async Task SaveDockerfileAsync(string dockerfileContent, string dockerfileName, string destinationDirectory, CancellationToken ct = default)
     {
         var destination = Path.Combine(destinationDirectory, dockerfileName);

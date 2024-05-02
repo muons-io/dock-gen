@@ -9,7 +9,7 @@ public sealed record ContainerBasePortExtractRequest(IAnalyzerResult AnalyzerRes
     {
         public ValueTask<ExtractResult<string>> Handle(ContainerBasePortExtractRequest request, CancellationToken cancellationToken = default)
         {
-            if (request.AnalyzerResult.Properties.TryGetValue(MSBuildProperties.ContainerProperties.ContainerPort, out var port) && !string.IsNullOrEmpty(port))
+            if (request.AnalyzerResult.Properties.TryGetValue(CustomContainerProperties.ContainerBasePort, out var port) && !string.IsNullOrEmpty(port))
             {
                 return ExtractResult<string>.Return(port);
             }
