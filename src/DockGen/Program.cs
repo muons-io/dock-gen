@@ -6,6 +6,8 @@ using DockGen.Commands.GenerateCommand;
 using DockGen.Generator;
 using Microsoft.Build.Locator;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Serilog;
 
 MSBuildLocator.RegisterDefaults();
 
@@ -14,14 +16,23 @@ rootCommand.AddCommand(new GenerateCommand());
 
 var builder = new CommandLineBuilder(rootCommand);
 builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
-{
-    hostBuilder.UseCommandHandler<GenerateCommand, GenerateCommandHandler>();
-    hostBuilder.ConfigureServices(services =>
     {
-        services.AddGeneratorCore();
-    });
-})
-.UseDefaults();
+        hostBuilder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddSerilog();
+        });
+        hostBuilder.UseSerilog((_, config) =>
+        {
+            config.WriteTo.Console();
+        });
+        hostBuilder.UseCommandHandler<GenerateCommand, GenerateCommandHandler>();
+        hostBuilder.ConfigureServices(services =>
+        {
+            services.AddGeneratorCore();
+        });
+    })
+    .UseDefaults();
 
 var parser = builder.Build();
 

@@ -6,7 +6,7 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>dockgen</ToolCommandName>
         <PackageId>dockgen</PackageId>
-        <Version>0.1.0</Version>
+        <Version>0.2.0</Version>
         <Authors>Wiktor Golonka</Authors>
         <PackageDescription>Dockerfile generator for .NET 8+ apps</PackageDescription>
         <RepositoryUrl>https://github.com/muons-io/dock-gen</RepositoryUrl>
@@ -19,6 +19,10 @@
       <PackageReference Include="Buildalyzer" />
       <PackageReference Include="Microsoft.Build.Locator" />
       <PackageReference Include="Microsoft.DotNet.Cli.Utils" />
+      <PackageReference Include="Serilog" />
+      <PackageReference Include="Serilog.Extensions.Hosting" />
+      <PackageReference Include="Serilog.Extensions.Logging" />
+      <PackageReference Include="Serilog.Sinks.Console" />
       <PackageReference Include="System.CommandLine" />
       <PackageReference Include="System.CommandLine.Hosting" />
       <PackageReference Include="System.CommandLine.NamingConventionBinder" />
