@@ -71,21 +71,22 @@ here: [Official .NET docs](https://learn.microsoft.com/en-us/dotnet/core/docker/
 
 | Property                 | Description                     | MSBuild Property | Custom Property | Default Value                           |
 |--------------------------|---------------------------------|------------------|-----------------|-----------------------------------------|
-| ContainerBaseImage*      |                                 | - [x] yes        | - [ ] no        | mcr.microsoft.com:443/dotnet/aspnet:8.0 |
-| ContainerRegistry        | Registry of the base image      | - [x] yes        | - [ ] no        | mcr.microsoft.com                       |
-| ContainerRepository      | Repository of the base image    | - [x] yes        | - [ ] no        | dotnet/aspnet                           |
-| ContainerFamily          | Family of the base image        | - [x] yes        | - [ ] no        |
-| ContainerImageTag        | Tag of the base image           | - [x] yes        | - [ ] no        | 8.0                                     |
-| ContainerBasePort        | Port of the base image          | - [ ] no         | - [x] yes       | 443                                     |
-| ContainerPort            | Port(s) to expose in Dockerfile | - [x] yes        | - [ ] no        |
-| ContainerBuildImage      | Build image for the project     | - [ ] no         | - [x] yes       | mcr.microsoft.com:443/dotnet/sdk:8.0    |
-| ContainerBuildRegistry   | Registry of the build image     | - [ ] no         | - [x] yes       | mcr.microsoft.com                       |
-| ContainerBuildRepository | Repository of the build image   | - [ ] no         | - [x] yes       | dotnet/sdk                              |
-| ContainerBuildFamily     | Family of the build image       | - [ ] no         | - [x] yes       |
-| ContainerBuildImageTag   | Tag of the build image          | - [ ] no         | - [x] yes       | 8.0                                     |
-| ContainerBuildPort       | Port of the build image         | - [ ] no         | - [x] yes       | 443                                     |
+| ContainerBaseImage*      |                                 | &#x2714; yes     | &#x2718; no     | mcr.microsoft.com:443/dotnet/aspnet:8.0 |
+| ContainerRegistry        | Registry of the base image      | &#x2714; yes     | &#x2718; no     | mcr.microsoft.com                       |
+| ContainerRepository      | Repository of the base image    | &#x2714; yes     | &#x2718; no     | dotnet/aspnet                           |
+| ContainerFamily          | Family of the base image        | &#x2714; yes     | &#x2718; no     |
+| ContainerImageTag        | Tag of the base image           | &#x2714; yes     | &#x2718; no     | 8.0                                     |
+| ContainerBasePort        | Port of the base image          | &#x2718; no      | &#x2714; yes    | 443                                     |
+| ContainerPort            | Port(s) to expose in Dockerfile | &#x2714; yes     | &#x2718; no     |
+| ContainerBuildImage      | Build image for the project     | &#x2718; no      | &#x2714; yes    | mcr.microsoft.com:443/dotnet/sdk:8.0    |
+| ContainerBuildRegistry   | Registry of the build image     | &#x2718; no      | &#x2714; yes    | mcr.microsoft.com                       |
+| ContainerBuildRepository | Repository of the build image   | &#x2718; no      | &#x2714; yes    | dotnet/sdk                              |
+| ContainerBuildFamily     | Family of the build image       | &#x2718; no      | &#x2714; yes    |
+| ContainerBuildImageTag   | Tag of the build image          | &#x2718; no      | &#x2714; yes    | 8.0                                     |
+| ContainerBuildPort       | Port of the build image         | &#x2718; no      | &#x2714; yes    | 443                                     |
 
 ## Roadmap
+
 - [ ] Support more advanced Dockerfile customizations
 
 ## Contributing
