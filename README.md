@@ -15,8 +15,7 @@ dependencies in a predictable way each time.
 > If you don't need to generate Dockerfiles, you can use the `dotnet publish` command to publish your application as
 > container.
 > For more information, see
->
-the [official documentation](https://learn.microsoft.com/en-us/dotnet/core/docker/publish-as-container?pivots=dotnet-8-0).
+> the [official documentation](https://learn.microsoft.com/en-us/dotnet/core/docker/publish-as-container?pivots=dotnet-8-0).
 > dock-gen is designed to provide more control over the Dockerfile generation process but it may not be suitable for all
 > use cases.
 
