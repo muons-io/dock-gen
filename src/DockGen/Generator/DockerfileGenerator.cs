@@ -83,9 +83,7 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
                 return ExitCodes.Failure;
             }
             
-            var dependencies = _dependencyTree[currentProjectPath];
-            
-            var copyFromTo = PrepareCopyDictionary(solutionPath, dependencies);
+            var copyFromTo = PrepareCopyDictionary(solutionPath, currentProjectPath);
             var initialCopyFromTo = PrepareInitialCopyDictionary(solutionPath, analyzerResult);
             
             var relativeProjectPath = Path.GetRelativePath(solutionPath, projectFileDirectory).Replace("..\\","");
@@ -152,9 +150,33 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
         return copyFromTo;
     }
     
-    private static Dictionary<string, string> PrepareCopyDictionary(string solutionPath, List<string> dependencies)
+    private Dictionary<string, string> PrepareCopyDictionary(string solutionPath, string currentProjectPath)
     {
         var copyFromTo = new Dictionary<string, string>();
+        
+        HashSet<string> visited = new();
+        Stack<string> projectStack = new();
+        projectStack.Push(currentProjectPath);
+        
+        while (projectStack.Count > 0)
+        {
+            var project = projectStack.Pop();
+            if (visited.Contains(project))
+            {
+                continue;
+            }
+            
+            var projectDependencies = _dependencyTree[project];
+            foreach (var dependency in projectDependencies)
+            {
+                projectStack.Push(dependency);
+            }
+            
+            visited.Add(project);
+        }
+        
+        var dependencies = visited.Distinct().ToList();
+        
         foreach(var dependencyPath in dependencies)
         {
             var dependencyProjectFileDirectory = Path.GetDirectoryName(dependencyPath);
