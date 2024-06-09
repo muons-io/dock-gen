@@ -17,7 +17,8 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
     private readonly ConcurrentDictionary<string, IAnalyzerResult> _analyzerCache = new();
     private readonly ConcurrentDictionary<string, List<string>> _dependencyTree = new();
 
-    public async Task<ExitCodes> GenerateDockerfileAsync(string? targetFramework, string? solutionPath, string? projectPath, CancellationToken ct = default)
+    // TODO: pass arguments in single configuration parameter
+    public async Task<ExitCodes> GenerateDockerfileAsync(string? targetFramework, string? solutionPath, string? projectPath, bool multiArch, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(solutionPath);
         
@@ -100,7 +101,8 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
                 Copy = copyFromTo,
                 AdditionalCopy = initialCopyFromTo,
                 TargetFileName = targetFileNameResult.Value,
-                Expose = containerPorts.Extracted ? containerPorts.Value : new List<ContainerPort>()
+                Expose = containerPorts.Extracted ? containerPorts.Value : new List<ContainerPort>(),
+                MultiArch = multiArch
             };
         
             var dockerfile = builder.Build();
@@ -245,7 +247,7 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
             targetFramework = analyzerResults.TargetFrameworks.First();
         }
         
-        if (!analyzerResults.TryGetTargetFramework(targetFramework, out var analyzerResult))
+        if (!analyzerResults.TryGetTargetFramework(targetFramework ?? "", out var analyzerResult))
         {
             _logger.LogWarning("Failed to analyze project for target framework {TargetFramework}", targetFramework);
             return;
