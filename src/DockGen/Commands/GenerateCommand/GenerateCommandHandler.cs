@@ -30,6 +30,7 @@ public sealed class GenerateCommandHandler : ICommandHandler
         var projectPath = context.ParseResult.GetValueForOption(GenerateCommand.ProjectOption);
         var solutionPath = context.ParseResult.GetValueForOption(GenerateCommand.SolutionOption);
         var noSolution = context.ParseResult.GetValueForArgument(GenerateCommand.NoSolutionOption);
+        var multiArch = context.ParseResult.GetValueForArgument(GenerateCommand.MultiArchOption);
         
         if (string.IsNullOrEmpty(solutionPath) && !TryFindSolutionPath(out solutionPath) && !noSolution)
         {
@@ -49,7 +50,7 @@ public sealed class GenerateCommandHandler : ICommandHandler
             return (int)ExitCodes.Failure;
         }
         
-        var result = await _dockerfileGenerator.GenerateDockerfileAsync(null, solutionPath, projectPath);
+        var result = await _dockerfileGenerator.GenerateDockerfileAsync(null, solutionPath, projectPath, multiArch);
         
         return (int)result;
     }

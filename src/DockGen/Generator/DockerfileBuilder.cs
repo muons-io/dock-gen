@@ -16,6 +16,8 @@ public sealed class DockerfileBuilder
     public Dictionary<string, string> Copy { get; set; } = new();
     public List<ContainerPort> Expose { get; set; } = new();
     public required string TargetFileName { get; init; }
+    
+    public bool MultiArch { get; set; } = true;
 
     public string Build()
     {
@@ -31,7 +33,15 @@ public sealed class DockerfileBuilder
 
     private StringBuilder BuildBaseLayer(StringBuilder sb)
     {
-        sb.AppendLine($"FROM {BaseImage} AS base");
+        if (MultiArch)
+        {
+            sb.AppendLine($"FROM --platform=\"$BUILDPLATFORM\" {BaseImage} AS base");
+            sb.AppendLine("ARG TARGETARCH");
+        }
+        else
+        {
+            sb.AppendLine($"FROM {BaseImage} AS base");
+        }
         sb.AppendLine($"WORKDIR {NormalizeDirectoryPath(WorkDir)}");
         sb.AppendLine();
         
@@ -45,7 +55,15 @@ public sealed class DockerfileBuilder
     
     private StringBuilder BuildBuildLayer(StringBuilder sb)
     {
-        sb.AppendLine($"FROM {BuildImage} AS build");
+        if (MultiArch)
+        {
+            sb.AppendLine($"FROM --platform=\"$BUILDPLATFORM\" {BuildImage} AS build");
+            sb.AppendLine("ARG TARGETARCH");
+        }
+        else
+        {
+            sb.AppendLine($"FROM {BuildImage} AS build");
+        }
         sb.AppendLine("WORKDIR /src");
         sb.AppendLine();
         
@@ -60,13 +78,29 @@ public sealed class DockerfileBuilder
         }
         
         var relativeProjectPath = Path.Combine(ProjectDirectory, ProjectFile);
-        
-        sb.AppendLine($"RUN dotnet restore \"{NormalizeFilePath(relativeProjectPath)}\"");
+
+        if (MultiArch)
+        {
+            sb.AppendLine($"RUN dotnet restore \"{NormalizeFilePath(relativeProjectPath)}\" -a \"$TARGETARCH\"");
+        }
+        else
+        {
+            sb.AppendLine($"RUN dotnet restore \"{NormalizeFilePath(relativeProjectPath)}\"");
+        }
         sb.AppendLine("COPY . .");
         
         var workDir = Path.Combine("/src", ProjectDirectory);
         sb.AppendLine($"WORKDIR \"{NormalizeDirectoryPath(workDir)}\"");
-        sb.AppendLine($"RUN dotnet build \"{NormalizeFilePath(ProjectFile)}\" -c Release -o /app/build");
+
+        if (MultiArch)
+        {
+            sb.AppendLine($"RUN dotnet build \"{NormalizeFilePath(ProjectFile)}\" -c Release -o /app/build -a \"$TARGETARCH\"");
+        }
+        else
+        {
+            sb.AppendLine($"RUN dotnet build \"{NormalizeFilePath(ProjectFile)}\" -c Release -o /app/build");
+        }
+        
         sb.AppendLine();
         
         return sb;
@@ -75,7 +109,16 @@ public sealed class DockerfileBuilder
     private StringBuilder BuildPublishLayer(StringBuilder sb)
     {
         sb.AppendLine("FROM build AS publish");
-        sb.AppendLine($"RUN dotnet publish \"{NormalizeFilePath(ProjectFile)}\" -c Release -o /app/publish");
+        
+        if (MultiArch)
+        {
+            sb.AppendLine($"RUN dotnet publish \"{NormalizeFilePath(ProjectFile)}\" -c Release -o /app/publish -a \"$TARGETARCH\"");
+        }
+        else
+        {
+            sb.AppendLine($"RUN dotnet publish \"{NormalizeFilePath(ProjectFile)}\" -c Release -o /app/publish");
+        }
+        
         sb.AppendLine();
         
         return sb;
