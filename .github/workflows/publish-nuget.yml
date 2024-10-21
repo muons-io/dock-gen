@@ -1,0 +1,39 @@
+name: Publish NuGet Package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the repository code
+      - uses: actions/checkout@v3
+
+      # Setup .NET Core
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x' # Specify your .NET SDK version
+
+      # Restore dependencies
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Build the project
+      - name: Build
+        run: dotnet build --configuration Release
+
+      # Extract version from the release tag
+      - name: Get version from tag
+        id: get_version
+        run: echo "::set-output name=VERSION::${GITHUB_REF#refs/tags/v}"
+
+      # Pack the project into a NuGet package
+      - name: Pack
+        run: dotnet pack --configuration Release --no-build -o ./nupkg /p:PackageVersion=${{ steps.get_version.outputs.VERSION }}
+
+      # Publish the package to NuGet.org
+      - name: Publish to NuGet
+        run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
