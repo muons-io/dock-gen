@@ -149,6 +149,18 @@ public sealed class DockerfileGenerator(ILogger<DockerfileGenerator> logger, IEx
             copyFromTo.Add(relativePackagesPropsPath, relativePackagesPropsDirectory);
         }
         
+        // check if solution directory contains nuget.config and if so add it to copyFromTo;
+        var solutionDirectory = Path.GetDirectoryName(solutionPath);
+        if (!string.IsNullOrEmpty(solutionDirectory))
+        {
+            var nugetConfigPath = Path.Combine(solutionDirectory, "nuget.config");
+            if (File.Exists(nugetConfigPath))
+            {
+                var relativeNugetConfigPath = Path.GetRelativePath(solutionPath, nugetConfigPath).Replace("..\\","");
+                copyFromTo.Add(relativeNugetConfigPath, ".");
+            }
+        }
+        
         return copyFromTo;
     }
     
