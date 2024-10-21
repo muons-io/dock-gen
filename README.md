@@ -46,13 +46,13 @@ dotnet tool install dockgen
 
 You can use dock-gen with the `generate` command. This command takes two optional parameters:
 
-- `-s` or `--solution`: To specify the solution file.
-- `-p` or `--project`: To specify the project file.
+- `-s` or `--solution`: To specify an absolute path to a solution file.
+- `-p` or `--project`: To specify an absolute path to a project file.
 
 Here is an example of how to use the `generate` command:
 
 ```bash
-dotnet dockgen generate -s MySolution.sln -p MyProject.csproj
+dotnet dockgen generate -s C:\\repos\MySolution\MySolution.sln -p C:\\repos\MySolution\MyProject\MyProject.csproj
 ```
 
 If no solution or project file is specified, dock-gen will try to find a solution file in the current directory.
@@ -106,3 +106,5 @@ This project makes use of the following open source projects:
 
 - [Buildalyzer](https://github.com/phmonte/Buildalyzer): A utility for performing design-time builds of .NET projects to
   obtain information such as package references and compiler flags.
+- [Serilog](https://github.com/serilog/serilog): Simple .NET logging with fully-structured events.
+- [.NET](https://github.com/dotnet): .NET platform

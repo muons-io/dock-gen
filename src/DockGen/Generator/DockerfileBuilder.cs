@@ -35,7 +35,7 @@ public sealed class DockerfileBuilder
     {
         if (MultiArch)
         {
-            sb.AppendLine($"FROM --platform=\"$BUILDPLATFORM\" {BaseImage} AS base");
+            sb.AppendLine($"FROM {BaseImage} AS base");
             sb.AppendLine("ARG TARGETARCH");
         }
         else
