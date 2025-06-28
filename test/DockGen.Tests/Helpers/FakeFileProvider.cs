@@ -24,7 +24,8 @@ public sealed class FakeFileProvider : IFileProvider
         var directoryContents = new List<IFileInfo>();
         foreach (var item in _items)
         {
-            if (Path.GetPathRoot(item.PhysicalPath!) == subpath)
+            var pathRoot = Path.GetDirectoryName(item.PhysicalPath!);
+            if (pathRoot == subpath)
             {
                 directoryContents.Add(item);
             }
@@ -40,8 +41,8 @@ public sealed class FakeFileProvider : IFileProvider
 
     public IFileInfo GetFileInfo(string subpath)
     {
-        var normalized = Path.(subpath);
-        var fileInfo = _items.FirstOrDefault(item => item.PhysicalPath?.Equals(normalized, StringComparison.OrdinalIgnoreCase) == true);
+        var normalizedPath = Path.GetFullPath(subpath);
+        var fileInfo = _items.FirstOrDefault(item => item.PhysicalPath?.Equals(normalizedPath, StringComparison.OrdinalIgnoreCase) == true);
         if (fileInfo is null)
         {
             return new NotFoundFileInfo(subpath);

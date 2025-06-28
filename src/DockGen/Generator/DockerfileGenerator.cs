@@ -1,5 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Text;
+using System.Xml;
 using Buildalyzer;
 using DockGen.Constants;
 using DockGen.Generator.Extractors;
@@ -210,18 +212,23 @@ public sealed class BuildalyzerAnalyzer : IDockGenAnalyser
     }
 }
 
-public sealed class PlainAnalyser : IDockGenAnalyser
+public interface IProjectFileLocator
 {
-    private readonly ILogger<PlainAnalyser> _logger;
+    Task<List<string>> LocateProjectFilesAsync(AnalyserRequest request, CancellationToken cancellationToken);
+}
+
+public sealed class ProjectFileLocator : IProjectFileLocator
+{
+    private readonly ILogger<ProjectFileLocator> _logger;
     private readonly IFileProvider _fileProvider;
 
-    public PlainAnalyser(ILogger<PlainAnalyser> logger, IFileProvider fileProvider)
+    public ProjectFileLocator(ILogger<ProjectFileLocator> logger, IFileProvider fileProvider)
     {
         _logger = logger;
         _fileProvider = fileProvider;
     }
 
-    public async ValueTask<List<Project>> AnalyseAsync(AnalyserRequest request, CancellationToken cancellationToken)
+    public async Task<List<string>> LocateProjectFilesAsync(AnalyserRequest request, CancellationToken cancellationToken)
     {
         var workingDirectory = _fileProvider.GetFileInfo(request.WorkingDirectory);
         if (!workingDirectory.Exists || !workingDirectory.IsDirectory)
@@ -237,26 +244,14 @@ public sealed class PlainAnalyser : IDockGenAnalyser
             _ => GetProjectFilesToAnalyse(workingDirectory.PhysicalPath!)
         };
 
-        var analysedProjects = new List<Project>();
-
-        foreach(var projectFile in projectFiles)
+        if (projectFiles.Count == 0)
         {
-            if (!_fileProvider.GetFileInfo(projectFile).Exists)
-            {
-                _logger.LogWarning("Project file {ProjectFile} does not exist", projectFile);
-                continue;
-            }
-
-            analysedProjects.Add(new Project
-            {
-                ProjectName = Path.GetFileName(projectFile),
-                ProjectDirectory = Path.GetDirectoryName(projectFile)!,
-                Properties = new Dictionary<string, string>(),
-                Items = new Dictionary<string, List<ProjectItem>>(),
-                Dependencies = []
-            });
+            _logger.LogWarning("No project files found in the specified paths");
+            return [];
         }
-        return analysedProjects;
+
+        _logger.LogInformation("Found {ProjectCount} project files to analyze", projectFiles.Count);
+        return projectFiles;
     }
 
     private List<string> GetProjectToAnalyse(string projectPath)
@@ -324,13 +319,62 @@ public sealed class PlainAnalyser : IDockGenAnalyser
             }
 
             var extension = Path.GetExtension(item.PhysicalPath!);
-            if (extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+            if (!extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
             {
-                projectFiles.Add(item.PhysicalPath!);
+                continue;
             }
+
+            projectFiles.Add(item.PhysicalPath!);
         }
 
         return projectFiles;
+    }
+}
+
+public sealed class PlainAnalyser : IDockGenAnalyser
+{
+    private readonly ILogger<PlainAnalyser> _logger;
+    private readonly IFileProvider _fileProvider;
+    private readonly IProjectFileLocator _fileLocator;
+
+    public PlainAnalyser(ILogger<PlainAnalyser> logger, IFileProvider fileProvider, IProjectFileLocator fileLocator)
+    {
+        _logger = logger;
+        _fileProvider = fileProvider;
+        _fileLocator = fileLocator;
+    }
+
+    public async ValueTask<List<Project>> AnalyseAsync(AnalyserRequest request, CancellationToken cancellationToken)
+    {
+        var projectFiles = await _fileLocator.LocateProjectFilesAsync(request, cancellationToken);
+
+        var analysedProjects = new List<Project>();
+
+        foreach(var projectFile in projectFiles)
+        {
+            var fileInfo = _fileProvider.GetFileInfo(projectFile);
+            if (!fileInfo.Exists)
+            {
+                _logger.LogWarning("Project file {ProjectFile} does not exist", projectFile);
+                continue;
+            }
+
+            await using var stream = _fileProvider.GetFileInfo(projectFile).CreateReadStream();
+            using var xmlReader = XmlReader.Create(stream);
+            var projectRootElement = ProjectRootElement.Create(xmlReader);
+
+            var items = projectRootElement.Items.ToList();
+
+            analysedProjects.Add(new Project
+            {
+                ProjectName = Path.GetFileName(projectFile),
+                ProjectDirectory = Path.GetDirectoryName(projectFile)!,
+                Properties = new Dictionary<string, string>(),
+                Items = new Dictionary<string, List<ProjectItem>>(),
+                Dependencies = []
+            });
+        }
+        return analysedProjects;
     }
 }
 

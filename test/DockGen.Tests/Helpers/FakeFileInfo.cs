@@ -15,8 +15,8 @@ public sealed class FakeFileInfo : IFileInfo
 
     public FakeFileInfo(string absolutePath, string fileContent)
     {
-        PhysicalPath = absolutePath;
-        Name = Path.GetFileName(absolutePath);
+        PhysicalPath = Path.GetFullPath(absolutePath);
+        Name = Path.GetFileName(PhysicalPath);
         _fileContent = fileContent;
         Length = fileContent.Length;
     }
