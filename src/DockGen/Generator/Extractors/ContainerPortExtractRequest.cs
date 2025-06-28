@@ -1,10 +1,9 @@
-﻿using Buildalyzer;
-using DockGen.Constants;
+﻿using DockGen.Constants;
 using DockGen.Generator.Models;
 
 namespace DockGen.Generator.Extractors;
 
-public sealed record ContainerPortExtractRequest(IAnalyzerResult AnalyzerResult) : IExtractRequest<List<ContainerPort>>
+public sealed record ContainerPortExtractRequest(Project AnalyzerResult) : IExtractRequest<List<ContainerPort>>
 {
     public sealed class ContainerPortExtractRequestHandler : IExtractRequestHandler<ContainerPortExtractRequest, List<ContainerPort>>
     {
@@ -20,10 +19,10 @@ public sealed record ContainerPortExtractRequest(IAnalyzerResult AnalyzerResult)
             {
                 var type = port.Metadata.TryGetValue(MSBuildProperties.ContainerMetadata.ContainerPortType, out var typeValue) ? typeValue : Constants.Constants.DefaultContainerPortType;
                 var value = port.ItemSpec;
-                
+
                 containerPorts.Add(new ContainerPort(value, type));
             }
-            
+
             return ExtractResult<List<ContainerPort>>.Return(containerPorts);
         }
     }

@@ -1,9 +1,8 @@
-﻿using Buildalyzer;
-using DockGen.Constants;
+﻿using DockGen.Constants;
 
 namespace DockGen.Generator.Extractors;
 
-public sealed record ContainerBaseFamilyExtractRequest(IAnalyzerResult AnalyzerResult) : IExtractRequest<string>
+public sealed record ContainerBaseFamilyExtractRequest(Project AnalyzerResult) : IExtractRequest<string>
 {
     public sealed class ContainerBaseFamilyExtractRequestHandler : IExtractRequestHandler<ContainerBaseFamilyExtractRequest, string>
     {
@@ -13,7 +12,7 @@ public sealed record ContainerBaseFamilyExtractRequest(IAnalyzerResult AnalyzerR
             {
                 return ExtractResult<string>.Return(family);
             }
-            
+
             return ExtractResult<string>.Empty();
         }
     }

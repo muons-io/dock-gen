@@ -7,11 +7,11 @@ public sealed class ExtractResult<TValue>
 
     private ExtractResult(TValue? value, bool extracted)
     {
-        this._value = value;
-        this.Extracted = extracted;
+        _value = value;
+        Extracted = extracted;
     }
     
-    public TValue Value => this.Extracted ? this._value! : throw new InvalidOperationException("Cannot access value when nothing was extracted");
+    public TValue Value => Extracted ? _value! : throw new InvalidOperationException("Cannot access value when nothing was extracted");
     
     public static ExtractResult<TValue> Return(TValue value) => new(value, true);
     public static ExtractResult<TValue> Empty() => new(default, false);

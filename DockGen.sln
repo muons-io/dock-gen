@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "resources", "resources", "{
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SimpleSolution", "SimpleSolution", "{03EBF8F8-2A0B-465B-8AE7-65C97369DDC0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DockGen.Tests", "test\DockGen.Tests\DockGen.Tests.csproj", "{F8B6EC37-73E2-4FE8-8789-565FA06F7AAF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,6 +25,10 @@ Global
 		{8024FBB6-5143-4414-B0BE-9D7D156E9FA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8024FBB6-5143-4414-B0BE-9D7D156E9FA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8024FBB6-5143-4414-B0BE-9D7D156E9FA0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8B6EC37-73E2-4FE8-8789-565FA06F7AAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8B6EC37-73E2-4FE8-8789-565FA06F7AAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8B6EC37-73E2-4FE8-8789-565FA06F7AAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8B6EC37-73E2-4FE8-8789-565FA06F7AAF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -31,6 +37,7 @@ Global
 		{8024FBB6-5143-4414-B0BE-9D7D156E9FA0} = {CD7EFC82-380F-410A-B103-97161D79BF72}
 		{D787EDF7-42B0-4E08-BAAF-9B96AFB0563B} = {331C4752-DAEA-439A-9ADC-C105E9D27A03}
 		{03EBF8F8-2A0B-465B-8AE7-65C97369DDC0} = {D787EDF7-42B0-4E08-BAAF-9B96AFB0563B}
+		{F8B6EC37-73E2-4FE8-8789-565FA06F7AAF} = {331C4752-DAEA-439A-9ADC-C105E9D27A03}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {33FA81F8-720F-4FDB-9360-E69296166558}

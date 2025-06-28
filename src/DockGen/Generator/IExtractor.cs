@@ -4,7 +4,7 @@ namespace DockGen.Generator;
 
 public interface IExtractor
 {
-    ValueTask<ExtractResult<TResponse>> Extract<TResponse>(IExtractRequest<TResponse> request, CancellationToken cancellationToken = default);
+    ValueTask<ExtractResult<TResponse>> ExtractAsync<TResponse>(IExtractRequest<TResponse> request, CancellationToken cancellationToken = default);
 }
 
 public sealed class Extractor : IExtractor
@@ -16,7 +16,7 @@ public sealed class Extractor : IExtractor
         _serviceProvider = serviceProvider;
     }
 
-    public ValueTask<ExtractResult<TResponse>> Extract<TResponse>(IExtractRequest<TResponse> request, CancellationToken cancellationToken = default)
+    public ValueTask<ExtractResult<TResponse>> ExtractAsync<TResponse>(IExtractRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
         var handlerType = typeof(IExtractRequestHandler<,>).MakeGenericType(request.GetType(), typeof(TResponse));
         var handler = _serviceProvider.GetRequiredService(handlerType);

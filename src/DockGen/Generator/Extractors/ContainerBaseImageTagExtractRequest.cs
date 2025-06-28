@@ -1,9 +1,8 @@
-﻿using Buildalyzer;
-using DockGen.Constants;
+﻿using DockGen.Constants;
 
 namespace DockGen.Generator.Extractors;
 
-public sealed record ContainerBaseImageTagExtractRequest(IAnalyzerResult AnalyzerResult) : IExtractRequest<string>
+public sealed record ContainerBaseImageTagExtractRequest(Project AnalyzerResult) : IExtractRequest<string>
 {
     public sealed class ContainerBaseImageTagExtractRequestHandler : IExtractRequestHandler<ContainerBaseImageTagExtractRequest, string>
     {
@@ -13,7 +12,7 @@ public sealed record ContainerBaseImageTagExtractRequest(IAnalyzerResult Analyze
             {
                 return ExtractResult<string>.Return(tag);
             }
-            
+
             return ExtractResult<string>.Empty();
         }
     }

@@ -13,6 +13,7 @@ MSBuildLocator.RegisterDefaults();
 
 var rootCommand = new RootCommand("DockGen - Dockerfile Generator for .NET");
 rootCommand.AddCommand(new GenerateCommand());
+rootCommand.AddCommand(new UpdateCommand());
 
 var builder = new CommandLineBuilder(rootCommand);
 builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
@@ -27,6 +28,7 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
             config.WriteTo.Console();
         });
         hostBuilder.UseCommandHandler<GenerateCommand, GenerateCommandHandler>();
+        hostBuilder.UseCommandHandler<UpdateCommand, GenerateCommandHandler>();
         hostBuilder.ConfigureServices(services =>
         {
             services.AddGeneratorCore();

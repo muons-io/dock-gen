@@ -1,9 +1,8 @@
-﻿using Buildalyzer;
-using DockGen.Constants;
+﻿using DockGen.Constants;
 
 namespace DockGen.Generator.Extractors;
 
-public sealed record ContainerBaseImageExtractRequest(IAnalyzerResult AnalyzerResult) : IExtractRequest<string>
+public sealed record ContainerBaseImageExtractRequest(Project AnalyzerResult) : IExtractRequest<string>
 {
     public sealed class ContainerBaseImageExtractRequestHandler : IExtractRequestHandler<ContainerBaseImageExtractRequest, string>
     {
@@ -20,23 +19,23 @@ public sealed record ContainerBaseImageExtractRequest(IAnalyzerResult AnalyzerRe
             {
                 return ExtractResult<string>.Return(image);
             }
-            
+
             var defaultBuildRegistry = Constants.Constants.DefaultBaseRegistry;
             var defaultBuildPort = Constants.Constants.DefaultBasePort;
             var defaultBuildRepository = Constants.Constants.DefaultBaseRepository;
-            
-            var targetFrameworkResult = await _extractor.Extract(new TargetFrameworkExtractRequest(request.AnalyzerResult), cancellationToken);
+
+            var targetFrameworkResult = await _extractor.ExtractAsync(new TargetFrameworkExtractRequest(request.AnalyzerResult), cancellationToken);
             if (!targetFrameworkResult.Extracted)
             {
                 return ExtractResult<string>.Empty();
             }
-            
-            var registryResult = await _extractor.Extract(new ContainerBaseRegistryExtractRequest(request.AnalyzerResult), cancellationToken);
-            var repositoryResult = await _extractor.Extract(new ContainerBaseRepositoryExtractRequest(request.AnalyzerResult), cancellationToken);
-            var portResult = await _extractor.Extract(new ContainerBasePortExtractRequest(request.AnalyzerResult), cancellationToken);
-            var tagResult = await _extractor.Extract(new ContainerBaseImageTagExtractRequest(request.AnalyzerResult), cancellationToken);
-            var familyResult = await _extractor.Extract(new ContainerBaseFamilyExtractRequest(request.AnalyzerResult), cancellationToken);
-            
+
+            var registryResult = await _extractor.ExtractAsync(new ContainerBaseRegistryExtractRequest(request.AnalyzerResult), cancellationToken);
+            var repositoryResult = await _extractor.ExtractAsync(new ContainerBaseRepositoryExtractRequest(request.AnalyzerResult), cancellationToken);
+            var portResult = await _extractor.ExtractAsync(new ContainerBasePortExtractRequest(request.AnalyzerResult), cancellationToken);
+            var tagResult = await _extractor.ExtractAsync(new ContainerBaseImageTagExtractRequest(request.AnalyzerResult), cancellationToken);
+            var familyResult = await _extractor.ExtractAsync(new ContainerBaseFamilyExtractRequest(request.AnalyzerResult), cancellationToken);
+
             image = registryResult.Extracted ? registryResult.Value : defaultBuildRegistry;
             if (portResult.Extracted && !string.IsNullOrEmpty(portResult.Value))
             {
@@ -46,18 +45,18 @@ public sealed record ContainerBaseImageExtractRequest(IAnalyzerResult AnalyzerRe
             {
                 image += $":{defaultBuildPort}";
             }
-            
+
             image += repositoryResult.Extracted ? $"/{repositoryResult.Value}" : $"/{defaultBuildRepository}";
             if (tagResult.Extracted && !string.IsNullOrEmpty(tagResult.Value))
             {
                 image += $":{tagResult.Value}";
             }
-            
+
             if (familyResult.Extracted && !string.IsNullOrEmpty(familyResult.Value))
             {
                 image += $"-{familyResult.Value}";
             }
-            
+
             return ExtractResult<string>.Return(image);
         }
     }

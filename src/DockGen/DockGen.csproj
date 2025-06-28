@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <OutputType>Exe</OutputType>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>dockgen</ToolCommandName>
@@ -19,6 +19,7 @@
       <PackageReference Include="Buildalyzer" />
       <PackageReference Include="Microsoft.Build.Locator" />
       <PackageReference Include="Microsoft.DotNet.Cli.Utils" />
+      <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" />
       <PackageReference Include="Serilog" />
       <PackageReference Include="Serilog.Extensions.Hosting" />
       <PackageReference Include="Serilog.Extensions.Logging" />
@@ -32,5 +33,5 @@
         <None Include="../../README.md" Pack="true" PackagePath="\"/>
         <None Include="../../LICENSE" Pack="true" PackagePath="\"/>
     </ItemGroup>
-    
+
 </Project>

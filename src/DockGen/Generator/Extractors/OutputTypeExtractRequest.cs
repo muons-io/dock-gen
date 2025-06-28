@@ -1,9 +1,8 @@
-﻿using Buildalyzer;
-using DockGen.Constants;
+﻿using DockGen.Constants;
 
 namespace DockGen.Generator.Extractors;
 
-public sealed record OutputTypeExtractRequest(IAnalyzerResult AnalyzerResult) : IExtractRequest<string>
+public sealed record OutputTypeExtractRequest(Project AnalyzerResult) : IExtractRequest<string>
 {
     public sealed class OutputTypeExtractRequestHandler : IExtractRequestHandler<OutputTypeExtractRequest, string>
     {
@@ -13,7 +12,7 @@ public sealed record OutputTypeExtractRequest(IAnalyzerResult AnalyzerResult) : 
             {
                 return ExtractResult<string>.Return(outputType);
             }
-            
+
             return ExtractResult<string>.Empty();
         }
     }
