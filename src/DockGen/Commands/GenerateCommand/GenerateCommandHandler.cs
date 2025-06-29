@@ -9,13 +9,16 @@ public sealed class GenerateCommandHandler : ICommandHandler
 {
     private readonly ILogger<GenerateCommandHandler> _logger;
     private readonly DockerfileGenerator _dockerfileGenerator;
+    private readonly IDockGenAnalyser _analyser;
 
     public GenerateCommandHandler(
         ILogger<GenerateCommandHandler> logger,
-        DockerfileGenerator dockerfileGenerator)
+        DockerfileGenerator dockerfileGenerator,
+        IDockGenAnalyser analyser)
     {
         _logger = logger;
         _dockerfileGenerator = dockerfileGenerator;
+        _analyser = analyser;
     }
 
     public int Invoke(InvocationContext context)
@@ -50,13 +53,13 @@ public sealed class GenerateCommandHandler : ICommandHandler
             return (int)ExitCodes.Failure;
         }
 
-        var configuration = new DockerfileGeneratorConfiguration
-        {
-            TargetFramework = null,
-            SolutionPath = solutionPath,
-            ProjectPath = projectPath,
-            MultiArch = multiArch,
-        };
+        var analyserRequest = new AnalyserRequest(
+            WorkingDirectory: Directory.GetCurrentDirectory(),
+            SolutionPath: solutionPath,
+            ProjectPath: projectPath
+        );
+
+        var projects = await _analyser.AnalyseAsync(analyserRequest, context.GetCancellationToken());
 
         var generatorConfiguration = new GeneratorConfiguration
         {
@@ -64,7 +67,11 @@ public sealed class GenerateCommandHandler : ICommandHandler
             MultiArch = multiArch,
         };
 
-        // var result = await _dockerfileGenerator.GenerateDockerfileAsync(generatorConfiguration);
+        foreach(var project in projects)
+        {
+            await _dockerfileGenerator.GenerateDockerfileAsync(generatorConfiguration, project);
+            _logger.LogInformation("Dockerfile generated for project: {ProjectName}", project.ProjectName);
+        }
 
         var result = 0;
         return (int)result;
@@ -100,8 +107,6 @@ public sealed class GenerateCommandHandler : ICommandHandler
         }
     }
 }
-
-
 
 public sealed class UpdateCommandHandler : ICommandHandler
 {
