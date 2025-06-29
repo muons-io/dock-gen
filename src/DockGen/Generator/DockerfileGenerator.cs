@@ -365,13 +365,18 @@ public sealed class PlainAnalyser : IDockGenAnalyser
 
             var items = projectRootElement.Items.ToList();
 
+            var dependencies = items
+                .Where(x => x.ItemType.Equals("ProjectReference", StringComparison.OrdinalIgnoreCase))
+                .Select(x => x.Include)
+                .ToList();
+
             analysedProjects.Add(new Project
             {
                 ProjectName = Path.GetFileName(projectFile),
                 ProjectDirectory = Path.GetDirectoryName(projectFile)!,
                 Properties = new Dictionary<string, string>(),
                 Items = new Dictionary<string, List<ProjectItem>>(),
-                Dependencies = []
+                Dependencies = dependencies
             });
         }
         return analysedProjects;

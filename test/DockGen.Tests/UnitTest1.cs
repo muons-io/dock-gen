@@ -130,7 +130,7 @@ public sealed class PlainAnalyserTests
     }
 
     [Fact]
-    public async Task Analyse_WhenProjectHasOneReference_Return2ProjectsAnd1Dependency()
+    public async Task Analyse_WhenProjectHasOneReference_Return1ProjectWith1Dependency()
     {
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
@@ -144,7 +144,7 @@ public sealed class PlainAnalyserTests
         var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
 
         Assert.NotNull(projects);
-        Assert.Equal(2, projects.Count);
+        Assert.Single(projects);
         Assert.Single(projects[0].Dependencies);
     }
 
