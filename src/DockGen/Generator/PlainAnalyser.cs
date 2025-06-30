@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Xml;
 using Microsoft.Build.Construction;
+using Microsoft.Build.Definition;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 
@@ -43,6 +44,7 @@ public sealed class PlainAnalyser : IDockGenAnalyser
         ConcurrentDictionary<string, Project> dependencyTree = new();
 
         ct.ThrowIfCancellationRequested();
+
 
         var degreeOfParallelism = Environment.ProcessorCount;
 
@@ -96,12 +98,21 @@ public sealed class PlainAnalyser : IDockGenAnalyser
 
         await using var stream = fileInfo.CreateReadStream();
         using var xmlReader = XmlReader.Create(stream);
-        var projectRootElement = ProjectRootElement.Create(xmlReader);
 
-        var projectReferences = projectRootElement.Items
+        var globalProperties = FindAllGlobalProperties(workingDirectory, string.Empty, relativeProjectPath);
+
+        var p = Microsoft.Build.Evaluation.Project.FromXmlReader(xmlReader, new ProjectOptions
+        {
+            GlobalProperties = globalProperties
+        });
+
+        var projectReferences = p.Items
             .Where(x => x.ItemType.Equals("ProjectReference", StringComparison.OrdinalIgnoreCase))
-            .Select(x => x.Include)
+            .Select(x => x.EvaluatedInclude)
             .ToList();
+
+        var projectProperties = p.Properties
+            .ToDictionary(x => x.Name, x => x.EvaluatedValue, StringComparer.OrdinalIgnoreCase);
 
         var shallowReferences = new List<Project>();
         foreach (var projectReference in projectReferences)
@@ -133,7 +144,7 @@ public sealed class PlainAnalyser : IDockGenAnalyser
         {
             ProjectName = Path.GetFileName(relativeProjectPath),
             ProjectDirectory = Path.GetDirectoryName(relativeProjectPath)!,
-            Properties = new Dictionary<string, string>(),
+            Properties = projectProperties,
             Items = new Dictionary<string, List<ProjectItem>>(),
             Dependencies = deepReferences
         };
@@ -144,6 +155,73 @@ public sealed class PlainAnalyser : IDockGenAnalyser
         _logger.LogInformation("Analyzed project {ProjectPath} in {ElapsedMilliseconds}ms", relativeProjectPath, stopWatch.ElapsedMilliseconds);
 
         return project;
+    }
+
+    /// <summary>
+    /// Finds all global properties for a project based on Directory.Build.props and Directory.Build.targets files.
+    /// </summary>
+    /// <param name="workingDirectory">The working directory of the project.</param>
+    /// <param name="relativeCurrentPath">The current path being analyzed.</param>
+    /// <param name="relativeProjectPath">The relative path of the project file.</param>
+    /// <returns>A dictionary containing global properties as key-value pairs.</returns>
+    private Dictionary<string, string> FindAllGlobalProperties(string workingDirectory, string relativeCurrentPath, string relativeProjectPath)
+    {
+        string[] readPropertiesFrom =
+        [
+            "Directory.Build.props",
+            "Directory.Build.targets"
+        ];
+
+        var globalProperties = new Dictionary<string, string>();
+
+        var items = _fileProvider.GetDirectoryContents(relativeCurrentPath);
+
+        // we should only analyze directories that are parent to the project file
+        foreach (var item in items)
+        {
+            if (!item.Exists)
+            {
+                continue;
+            }
+
+            if (item.IsDirectory)
+            {
+                var directoryPath = item.PhysicalPath!;
+
+                var buildProperties = FindAllGlobalProperties(workingDirectory, directoryPath, relativeProjectPath);
+                foreach (var property in buildProperties)
+                {
+                    globalProperties[property.Key] = property.Value;
+                }
+            }
+
+            if (readPropertiesFrom.Contains(item.Name))
+            {
+                var buildProperties = ReadPropertiesFromFile(item);
+                foreach (var property in buildProperties)
+                {
+                    globalProperties[property.Key] = property.Value;
+                }
+            }
+        }
+
+        Dictionary<string, string> ReadPropertiesFromFile(IFileInfo fileInfo)
+        {
+            var properties = new Dictionary<string, string>();
+
+            using var stream = fileInfo.CreateReadStream();
+            using var xmlReader = XmlReader.Create(stream);
+            var projectRootElement = ProjectRootElement.Create(xmlReader);
+            foreach (var property in projectRootElement.Properties)
+            {
+                properties[property.Name] = property.Value;
+            }
+
+            return properties;
+        }
+
+
+        return globalProperties;
     }
 
     /// <summary>

@@ -18,7 +18,7 @@ public sealed class FakeFileProvider : IFileProvider
     public IDirectoryContents GetDirectoryContents(string subpath)
     {
         var fileInfo = GetFileInfo(subpath);
-        if (!fileInfo.Exists || !fileInfo.IsDirectory)
+        if (subpath != string.Empty && (!fileInfo.Exists || !fileInfo.IsDirectory))
         {
             return new NotFoundDirectoryContents();
         }

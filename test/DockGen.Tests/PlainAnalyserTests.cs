@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using DockGen.Generator;
 using DockGen.Tests.Helpers;
+using Microsoft.Build.Locator;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -8,6 +10,14 @@ namespace DockGen.Tests;
 public sealed class PlainAnalyserTests
 {
     private readonly ILogger<PlainAnalyser> _analyserLogger = new Mock<ILogger<PlainAnalyser>>().Object;
+
+    /// <summary>
+    /// Static constructor to register MSBuild defaults. It needs to be called only once per test run
+    /// </summary>
+    static PlainAnalyserTests()
+    {
+        MSBuildLocator.RegisterDefaults();
+    }
 
     [Fact]
     public async Task Analyse_WhenProjectHasNoReferences_Return1ProjectWith0References()
@@ -47,6 +57,7 @@ public sealed class PlainAnalyserTests
     {
         var fileProvider = new FakeFileProvider(rootPath: "/repos", items:
         [
+            new FakeDirectoryInfo("/repos/project"),
             new FakeDirectoryInfo("/repos/project/dir1"),
             new FakeFileInfo("/repos/project/dir1/a.csproj",
                 """
@@ -89,10 +100,11 @@ public sealed class PlainAnalyserTests
     }
 
     [Fact]
-    public async Task Analyse_WhenProjectHas1ReferenceWith1Reference_Return1ProjectWith2References()
+    public async Task Analyse_WhenDirectoryHas1ProjectWith11ReferenceWith1Reference_Return1ProjectWith2References()
     {
         var fileProvider = new FakeFileProvider(rootPath: "/repos", items:
         [
+            new FakeDirectoryInfo("/repos/project"),
             new FakeDirectoryInfo("/repos/project/dir1"),
             new FakeFileInfo("/repos/project/dir1/a.csproj",
                 """
@@ -138,5 +150,143 @@ public sealed class PlainAnalyserTests
         Assert.NotNull(projects);
         Assert.Single(projects);
         Assert.Equal(2, projects[0].Dependencies.Count);
+    }
+
+    [Fact]
+    public async Task Analyse_WhenDirectoryHas3ProjectsWith1ReferenceWith1Reference_Return1ProjectWith2References()
+    {
+        var fileProvider = new FakeFileProvider(rootPath: "/repos", items:
+        [
+            new FakeDirectoryInfo("/repos/project"),
+            new FakeFileInfo("/repos/project/Directory.Build.props",
+                """
+                <Project>
+                    <PropertyGroup>
+                        <CustomProperty1>CustomProperty1Value</CustomProperty1>
+                        <CustomProperty2>CustomProperty2Value</CustomProperty2>
+                    </PropertyGroup>
+                </Project>
+                """),
+            new FakeDirectoryInfo("/repos/project/dir1"),
+            new FakeFileInfo("/repos/project/dir1/a.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                    <ItemGroup>
+                        <ProjectReference Include="..\dir2\b.csproj" />
+                    </ItemGroup>
+                </Project>
+                """),
+            new FakeDirectoryInfo("/repos/project/dir2"),
+            new FakeFileInfo("/repos/project/dir2/b.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                    <ItemGroup>
+                        <ProjectReference Include="..\dir3\c.csproj" />
+                    </ItemGroup>
+                </Project>
+                """),
+            new FakeDirectoryInfo("/repos/project/dir3"),
+            new FakeFileInfo("/repos/project/dir3/c.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                </Project>
+                """)
+        ]);
+
+        List<string> projectFilesPath =
+        [
+            fileProvider.GetFileInfo("/repos/project/dir1/a.csproj").PhysicalPath!,
+            fileProvider.GetFileInfo("/repos/project/dir2/b.csproj").PhysicalPath!,
+            fileProvider.GetFileInfo("/repos/project/dir3/c.csproj").PhysicalPath!
+        ];
+
+        var locatorMock = new Mock<IProjectFileLocator>();
+        locatorMock
+            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(projectFilesPath);
+
+        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
+
+        var request = new AnalyserRequest(fileProvider.RootPath,"project");
+
+        var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
+
+        Assert.NotNull(projects);
+        Assert.Equal(3, projects.Count);
+        Assert.Collection(
+            projects,
+            project =>
+            {
+                Assert.Equal("a.csproj", project.ProjectName);
+                Assert.Equal(2, project.Dependencies.Count);
+                Assert.Contains(project.Properties, x => x.Key == "CustomProperty1" && x.Value == "CustomProperty1Value");
+                Assert.Contains(project.Properties, x => x.Key == "CustomProperty2" && x.Value == "CustomProperty2Value");
+            },
+            project =>
+            {
+                Assert.Equal("b.csproj", project.ProjectName);
+                Assert.Single(project.Dependencies);
+                Assert.Contains(project.Properties, x => x.Key == "CustomProperty1" && x.Value == "CustomProperty1Value");
+                Assert.Contains(project.Properties, x => x.Key == "CustomProperty2" && x.Value == "CustomProperty2Value");
+            },
+            project =>
+            {
+                Assert.Equal("c.csproj", project.ProjectName);
+                Assert.Empty(project.Dependencies);
+                Assert.Contains(project.Properties, x => x.Key == "CustomProperty1" && x.Value == "CustomProperty1Value");
+                Assert.Contains(project.Properties, x => x.Key == "CustomProperty2" && x.Value == "CustomProperty2Value");
+            });
+    }
+
+    [Fact]
+    public async Task Analyse_WhenDirectoryContainsProjectAndBuildProps_Return1ProjectWith2Properties()
+    {
+        var fileProvider = new FakeFileProvider(rootPath: "/repos", items:
+        [
+            new FakeDirectoryInfo("/repos/project"),
+            new FakeFileInfo("/repos/project/Directory.Build.props",
+                """
+                <Project>
+                    <PropertyGroup>
+                        <CustomProperty1>CustomProperty1Value</CustomProperty1>
+                        <CustomProperty2>CustomProperty2Value</CustomProperty2>
+                    </PropertyGroup>
+                </Project>
+                """),
+            new FakeDirectoryInfo("/repos/project/dir1"),
+            new FakeFileInfo("/repos/project/dir1/a.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                </Project>
+                """)
+        ]);
+
+        List<string> projectFilesPath =
+        [
+            fileProvider.GetFileInfo("/repos/project/dir1/a.csproj").PhysicalPath!
+        ];
+
+        var locatorMock = new Mock<IProjectFileLocator>();
+        locatorMock
+            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(projectFilesPath);
+
+        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
+
+        var request = new AnalyserRequest(fileProvider.RootPath,"project");
+
+        var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
+
+        Assert.NotNull(projects);
+        Assert.Single(projects);
+        Assert.Collection(
+            projects,
+            project =>
+            {
+                Assert.Equal("a.csproj", project.ProjectName);
+                Assert.Empty(project.Dependencies);
+                Assert.Contains(project.Properties, x => x.Key == "CustomProperty1" && x.Value == "CustomProperty1Value");
+                Assert.Contains(project.Properties, x => x.Key == "CustomProperty2" && x.Value == "CustomProperty2Value");
+            });
     }
 }
