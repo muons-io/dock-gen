@@ -1,5 +1,4 @@
 using DockGen.Tests.Helpers;
-using Microsoft.Extensions.FileProviders;
 
 namespace DockGen.Tests;
 
@@ -51,7 +50,7 @@ internal static class TestData
         </Project>
         """;
 
-    public static readonly IFileProvider FileProvider = new FakeFileProvider(
+    public static readonly FakeFileProvider FileProvider = new FakeFileProvider("/repos",
     [
         new FakeDirectoryInfo("/repos"),
         new FakeDirectoryInfo("/repos/projectA"),

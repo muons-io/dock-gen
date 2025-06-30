@@ -17,18 +17,14 @@ public sealed class ProjectFileLocator : IProjectFileLocator
 
     public async Task<List<string>> LocateProjectFilesAsync(AnalyserRequest request, CancellationToken cancellationToken)
     {
-        var workingDirectory = _fileProvider.GetFileInfo(request.WorkingDirectory);
-        if (!workingDirectory.Exists || !workingDirectory.IsDirectory)
-        {
-            _logger.LogError("Working directory {WorkingDirectory} does not exist or is not a directory", request.WorkingDirectory);
-            return [];
-        }
+        _logger.LogInformation("Locating project files for request: {Request}", request);
 
-        var projectFiles = (request.WorkingDirectory, request.SolutionPath, request.ProjectPath) switch
+        var projectFiles = (request.RelativeDirectory, request.RelativeSolutionPath, request.RelativeProjectPath) switch
         {
-            (_, _, not null) => FindProject(request.ProjectPath),
-            (_, not null, _) => await FindProjectsInSolutionAsync(request.SolutionPath, cancellationToken),
-            _ => FindProjectsInDirectory(workingDirectory.PhysicalPath!)
+            (_, _, not null) => FindProject(request.RelativeProjectPath),
+            (_, not null, _) => await FindProjectsInSolutionAsync(request.WorkingDirectory, request.RelativeSolutionPath, cancellationToken),
+            (not null, _, _) => FindProjectsInDirectory(request.WorkingDirectory, request.RelativeDirectory!),
+            _ => FindProjectsInDirectory(request.WorkingDirectory, ".")
         };
 
         if (projectFiles.Count == 0)
@@ -41,11 +37,11 @@ public sealed class ProjectFileLocator : IProjectFileLocator
         return projectFiles;
     }
 
-    private List<string> FindProject(string projectPath)
+    private List<string> FindProject(string relativeProjectPath)
     {
         var projectFiles = new List<string>();
 
-        var projectFile = _fileProvider.GetFileInfo(projectPath);
+        var projectFile = _fileProvider.GetFileInfo(relativeProjectPath);
         if (projectFile.Exists && !projectFile.IsDirectory)
         {
             projectFiles.Add(projectFile.PhysicalPath!);
@@ -54,13 +50,14 @@ public sealed class ProjectFileLocator : IProjectFileLocator
         return projectFiles;
     }
 
-    private async Task<List<string>> FindProjectsInSolutionAsync(string solutionPath, CancellationToken ct = default)
+    private async Task<List<string>> FindProjectsInSolutionAsync(string workingDirectory, string solutionPath, CancellationToken ct = default)
     {
         var supportedExtensions = new[] { ".sln", ".slnx" };
 
         var projectFiles = new List<string>();
 
-        var solutionFile = _fileProvider.GetFileInfo(solutionPath);
+        var solutionPathRelative = Path.GetRelativePath(workingDirectory, solutionPath);
+        var solutionFile = _fileProvider.GetFileInfo(solutionPathRelative);
         if (!solutionFile.Exists || solutionFile.IsDirectory)
         {
             _logger.LogError("Solution file {SolutionPath} does not exist", solutionPath);
@@ -90,17 +87,18 @@ public sealed class ProjectFileLocator : IProjectFileLocator
         return projectFiles;
     }
 
-    private List<string> FindProjectsInDirectory(string workingDirectory)
+    private List<string> FindProjectsInDirectory(string workingDirectory, string relativeDirectory)
     {
         var projectFiles = new List<string>();
 
-        var items = _fileProvider.GetDirectoryContents(workingDirectory);
+        var items = _fileProvider.GetDirectoryContents(relativeDirectory);
         foreach(var item in items)
         {
             if (item.IsDirectory)
             {
                 // Recursively get project files from subdirectories
-                var subProjectFiles = FindProjectsInDirectory(item.PhysicalPath!);
+                var relativePath = Path.GetRelativePath(workingDirectory, item.PhysicalPath!);
+                var subProjectFiles = FindProjectsInDirectory(workingDirectory, relativePath);
                 projectFiles.AddRange(subProjectFiles);
                 continue;
             }

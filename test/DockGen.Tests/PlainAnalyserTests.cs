@@ -18,9 +18,10 @@ public sealed class PlainAnalyserTests
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(["/repos/projectB/a.csproj"]);
 
-        var analyser = new PlainAnalyser(_analyserLogger, GetTestFileProvider(), locatorMock.Object);
+        var fileProvider = GetTestFileProvider();
+        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
 
-        var request = new AnalyserRequest("/repos/projectB");
+        var request = new AnalyserRequest(fileProvider.RootPath,"projectB");
 
         var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
 
@@ -32,14 +33,16 @@ public sealed class PlainAnalyserTests
     [Fact]
     public async Task Analyse_WhenProjectHas1ReferenceWith0Dependencies_Return1ProjectWith1Dependency()
     {
+        var fileProvider = GetTestFileProvider();
+
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(["/repos/projectC/dir2/b.csproj"]);
+            .ReturnsAsync([fileProvider.GetFileInfo("/projectC/dir2/b.csproj").PhysicalPath!]);
 
-        var analyser = new PlainAnalyser(_analyserLogger, GetTestFileProvider(), locatorMock.Object);
+        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
 
-        var request = new AnalyserRequest("/repos/projectC/dir2");
+        var request = new AnalyserRequest(fileProvider.RootPath,"projectC/dir2");
 
         var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
 
@@ -58,7 +61,8 @@ public sealed class PlainAnalyserTests
 
         var analyser = new PlainAnalyser(_analyserLogger, GetTestFileProvider(), locatorMock.Object);
 
-        var request = new AnalyserRequest("/repos/projectD/dir2");
+        var fileProvider = GetTestFileProvider();
+        var request = new AnalyserRequest(fileProvider.RootPath,"projectD/dir2");
 
         var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
 
@@ -191,7 +195,7 @@ public sealed class PlainAnalyserTests
         ];
         items.AddRange(projectDItems);
 
-        return new FakeFileProvider(items);
+        return new FakeFileProvider("/repos", items);
     }
 
 }
