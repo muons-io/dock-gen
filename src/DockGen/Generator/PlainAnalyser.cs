@@ -76,7 +76,8 @@ public sealed class PlainAnalyser : IDockGenAnalyser
         ConcurrentDictionary<string, Project> dependencyTree,
         CancellationToken cancellationToken = default)
     {
-        if (dependencyTree.TryGetValue(relativeProjectPath, out var project))
+        var absoluteProjectPath = Path.GetFullPath(relativeProjectPath, workingDirectory);
+        if (dependencyTree.TryGetValue(absoluteProjectPath, out var project))
         {
             return project;
         }
@@ -102,7 +103,7 @@ public sealed class PlainAnalyser : IDockGenAnalyser
             .Select(x => x.Include)
             .ToList();
 
-        var dependencies = new List<Project>();
+        var shallowReferences = new List<Project>();
         foreach (var projectReference in projectReferences)
         {
             string absoluteReferencePath;
@@ -123,8 +124,10 @@ public sealed class PlainAnalyser : IDockGenAnalyser
 
             var dependency = await ProcessProjectAsync(workingDirectory, relativeReferencePath, dependencyTree, cancellationToken);
 
-            dependencies.Add(dependency);
+            shallowReferences.Add(dependency);
         }
+
+        var deepReferences = ExpandReferences(shallowReferences);
 
         project = new Project
         {
@@ -132,14 +135,44 @@ public sealed class PlainAnalyser : IDockGenAnalyser
             ProjectDirectory = Path.GetDirectoryName(relativeProjectPath)!,
             Properties = new Dictionary<string, string>(),
             Items = new Dictionary<string, List<ProjectItem>>(),
-            Dependencies = dependencies
+            Dependencies = deepReferences
         };
 
-        dependencyTree.TryAdd(relativeProjectPath, project);
+        dependencyTree.TryAdd(absoluteProjectPath, project);
 
         stopWatch.Stop();
         _logger.LogInformation("Analyzed project {ProjectPath} in {ElapsedMilliseconds}ms", relativeProjectPath, stopWatch.ElapsedMilliseconds);
 
         return project;
+    }
+
+    /// <summary>
+    /// This method expands the references of a project
+    /// </summary>
+    private List<Project> ExpandReferences(List<Project> references)
+    {
+        var stack = new Stack<Project>(references);
+
+        var expandedReferences = new List<Project>();
+        while (stack.Count > 0)
+        {
+            var currentProject = stack.Pop();
+            if (expandedReferences.Contains(currentProject))
+            {
+                continue;
+            }
+
+            expandedReferences.Add(currentProject);
+
+            foreach (var dependency in currentProject.Dependencies)
+            {
+                if (!expandedReferences.Contains(dependency))
+                {
+                    stack.Push(dependency);
+                }
+            }
+        }
+
+        return expandedReferences;
     }
 }

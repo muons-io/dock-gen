@@ -1,6 +1,5 @@
 using DockGen.Generator;
 using DockGen.Tests.Helpers;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -11,17 +10,30 @@ public sealed class PlainAnalyserTests
     private readonly ILogger<PlainAnalyser> _analyserLogger = new Mock<ILogger<PlainAnalyser>>().Object;
 
     [Fact]
-    public async Task Analyse_WhenProjectHasNoReferences_Return0Dependencies()
+    public async Task Analyse_WhenProjectHasNoReferences_Return1ProjectWith0References()
     {
+        var fileProvider = new FakeFileProvider(rootPath: "/repos", items:
+        [
+            new FakeDirectoryInfo("/repos/project"),
+            new FakeFileInfo("/repos/project/a.csproj", "<Project></Project>"),
+            new FakeDirectoryInfo("/repos/project/dir1"),
+            new FakeDirectoryInfo("/repos/project/dir1/dir2"),
+            new FakeDirectoryInfo("/repos/project/dir1/dir2/dir3")
+        ]);
+
+        List<string> projectFilesPath =
+        [
+            fileProvider.GetFileInfo("/repos/project/a.csproj").PhysicalPath!
+        ];
+
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(["/repos/projectB/a.csproj"]);
+            .ReturnsAsync(projectFilesPath);
 
-        var fileProvider = GetTestFileProvider();
         var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
 
-        var request = new AnalyserRequest(fileProvider.RootPath,"projectB");
+        var request = new AnalyserRequest(fileProvider.RootPath,"project");
 
         var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
 
@@ -31,18 +43,43 @@ public sealed class PlainAnalyserTests
     }
 
     [Fact]
-    public async Task Analyse_WhenProjectHas1ReferenceWith0Dependencies_Return1ProjectWith1Dependency()
+    public async Task Analyse_WhenProjectHas1ReferenceWith0References_Return1ProjectWith1Reference()
     {
-        var fileProvider = GetTestFileProvider();
+        var fileProvider = new FakeFileProvider(rootPath: "/repos", items:
+        [
+            new FakeDirectoryInfo("/repos/project/dir1"),
+            new FakeFileInfo("/repos/project/dir1/a.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                    <ItemGroup>
+                        <ProjectReference Include="..\dir2\b.csproj" />
+                    </ItemGroup>
+                </Project>
+                """),
+            new FakeDirectoryInfo("/repos/project/dir2"),
+            new FakeFileInfo("/repos/project/dir2/b.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                    <ItemGroup>
+                        <Using Include="Xunit"/>
+                    </ItemGroup>
+                </Project>
+                """)
+        ]);
+
+        List<string> projectFilesPath =
+        [
+            fileProvider.GetFileInfo("/repos/project/dir1/a.csproj").PhysicalPath!
+        ];
 
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([fileProvider.GetFileInfo("/projectC/dir2/b.csproj").PhysicalPath!]);
+            .ReturnsAsync(projectFilesPath);
 
         var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
 
-        var request = new AnalyserRequest(fileProvider.RootPath,"projectC/dir2");
+        var request = new AnalyserRequest(fileProvider.RootPath,"project/dir1");
 
         var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
 
@@ -52,150 +89,54 @@ public sealed class PlainAnalyserTests
     }
 
     [Fact]
-    public async Task Analyse_WhenProjectHas1ReferenceWith1Dependencies_Return1ProjectWith2Dependencies()
+    public async Task Analyse_WhenProjectHas1ReferenceWith1Reference_Return1ProjectWith2References()
     {
+        var fileProvider = new FakeFileProvider(rootPath: "/repos", items:
+        [
+            new FakeDirectoryInfo("/repos/project/dir1"),
+            new FakeFileInfo("/repos/project/dir1/a.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                    <ItemGroup>
+                        <ProjectReference Include="..\dir2\b.csproj" />
+                    </ItemGroup>
+                </Project>
+                """),
+            new FakeDirectoryInfo("/repos/project/dir2"),
+            new FakeFileInfo("/repos/project/dir2/b.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                    <ItemGroup>
+                        <ProjectReference Include="..\dir3\c.csproj" />
+                    </ItemGroup>
+                </Project>
+                """),
+            new FakeDirectoryInfo("/repos/project/dir3"),
+            new FakeFileInfo("/repos/project/dir3/c.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                </Project>
+                """)
+        ]);
+
+        List<string> projectFilesPath =
+        [
+            fileProvider.GetFileInfo("/repos/project/dir1/a.csproj").PhysicalPath!
+        ];
+
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(["/repos/projectD/dir2/b.csproj"]);
+            .ReturnsAsync(projectFilesPath);
 
-        var analyser = new PlainAnalyser(_analyserLogger, GetTestFileProvider(), locatorMock.Object);
+        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
 
-        var fileProvider = GetTestFileProvider();
-        var request = new AnalyserRequest(fileProvider.RootPath,"projectD/dir2");
+        var request = new AnalyserRequest(fileProvider.RootPath,"project/dir1");
 
         var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
 
         Assert.NotNull(projects);
         Assert.Single(projects);
-        Assert.Single(projects[0].Dependencies);
+        Assert.Equal(2, projects[0].Dependencies.Count);
     }
-
-    private static FakeFileProvider GetTestFileProvider()
-    {
-        List<IFileInfo> items = [
-            new FakeDirectoryInfo("/repos")
-        ];
-
-        List<IFileInfo> projectAItems = [
-            new FakeDirectoryInfo("/repos/projectA"),
-            new FakeDirectoryInfo("/repos/projectA/dir1"),
-            new FakeDirectoryInfo("/repos/projectA/dir1/dir2"),
-            new FakeDirectoryInfo("/repos/projectA/dir1/dir2/dir3")
-        ];
-        items.AddRange(projectAItems);
-
-        List<IFileInfo> projectBItems = [
-            new FakeDirectoryInfo("/repos/projectB"),
-            new FakeFileInfo("/repos/projectB/a.csproj", "<Project></Project>"),
-            new FakeDirectoryInfo("/repos/projectB/dir1"),
-            new FakeDirectoryInfo("/repos/projectB/dir1/dir2"),
-            new FakeDirectoryInfo("/repos/projectB/dir1/dir2/dir3")
-        ];
-        items.AddRange(projectBItems);
-
-        List<IFileInfo> projectCItems = [
-            new FakeFileInfo("/repos/projectC/c.slnx",
-                """
-                <Solution>
-                    <Folder Name="/dir1/">
-                        <Project Path="dir1/a.csproj" />
-                    </Folder>
-                    <Folder Name="/dir2/">
-                        <Project Path="dir2/b.csproj" />
-                    </Folder>
-                    <Folder Name="/dir3/">
-                        <Project Path="dir3/c.csproj" />
-                    </Folder>
-                    <Folder Name="/dir4/" />
-                </Solution>
-                """),
-            new FakeDirectoryInfo("/repos/projectC/dir1"),
-            new FakeFileInfo("/repos/projectC/dir1/a.csproj",
-                """
-                <Project Sdk="Microsoft.NET.Sdk">
-                </Project>
-                """),
-            new FakeDirectoryInfo("/repos/projectC/dir2"),
-            new FakeFileInfo("/repos/projectC/dir2/b.csproj",
-                """
-                <Project Sdk="Microsoft.NET.Sdk.Web">
-                    <ItemGroup>
-                        <ProjectReference Include="..\dir3\c.csproj" />
-                    </ItemGroup>
-                </Project>
-                """),
-            new FakeDirectoryInfo("/repos/projectC/dir3"),
-            new FakeFileInfo("/repos/projectC/dir3/c.csproj",
-                """
-                <Project Sdk="Microsoft.NET.Sdk">
-                </Project>
-                """),
-            new FakeDirectoryInfo("/repos/projectC/dir4"),
-            new FakeFileInfo("/repos/projectC/dir4/d.csproj",
-                """
-                <Project Sdk="Microsoft.NET.Sdk">
-                    <ItemGroup>
-                        <Using Include="Xunit"/>
-                    </ItemGroup>
-                </Project>
-                """)
-        ];
-        items.AddRange(projectCItems);
-
-        List<IFileInfo> projectDItems = [
-            new FakeFileInfo("/repos/projectD/c.slnx",
-                """
-                <Solution>
-                    <Folder Name="/dir1/">
-                        <Project Path="dir1/a.csproj" />
-                    </Folder>
-                    <Folder Name="/dir2/">
-                        <Project Path="dir2/b.csproj" />
-                    </Folder>
-                    <Folder Name="/dir3/">
-                        <Project Path="dir3/c.csproj" />
-                    </Folder>
-                    <Folder Name="/dir4/" />
-                </Solution>
-                """),
-            new FakeDirectoryInfo("/repos/projectD/dir1"),
-            new FakeFileInfo("/repos/projectD/dir1/a.csproj",
-                """
-                <Project Sdk="Microsoft.NET.Sdk">
-                </Project>
-                """),
-            new FakeDirectoryInfo("/repos/projectD/dir2"),
-            new FakeFileInfo("/repos/projectD/dir2/b.csproj",
-                """
-                <Project Sdk="Microsoft.NET.Sdk.Web">
-                    <ItemGroup>
-                        <ProjectReference Include="..\dir3\c.csproj" />
-                    </ItemGroup>
-                </Project>
-                """),
-            new FakeDirectoryInfo("/repos/projectD/dir3"),
-            new FakeFileInfo("/repos/projectD/dir3/c.csproj",
-                """
-                <Project Sdk="Microsoft.NET.Sdk">
-                    <ItemGroup>
-                        <ProjectReference Include="..\dir4\d.csproj" />
-                    </ItemGroup>
-                </Project>
-                """),
-            new FakeDirectoryInfo("/repos/projectD/dir4"),
-            new FakeFileInfo("/repos/projectD/dir4/d.csproj",
-                """
-                <Project Sdk="Microsoft.NET.Sdk">
-                    <ItemGroup>
-                        <Using Include="Xunit"/>
-                    </ItemGroup>
-                </Project>
-                """)
-        ];
-        items.AddRange(projectDItems);
-
-        return new FakeFileProvider("/repos", items);
-    }
-
 }

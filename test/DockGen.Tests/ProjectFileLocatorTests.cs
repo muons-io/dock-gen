@@ -9,9 +9,9 @@ public sealed class ProjectFileLocatorTests
     private readonly ILogger<ProjectFileLocator> _locatorLogger = new Mock<ILogger<ProjectFileLocator>>().Object;
 
     [Theory]
-    // [InlineData("/repos/projectA", 0)]
-    // [InlineData("/repos/projectA/dir1", 0)]
-    // [InlineData("/repos/projectA/dir1/dir2", 0)]
+    [InlineData("/repos/projectA", 0)]
+    [InlineData("/repos/projectA/dir1", 0)]
+    [InlineData("/repos/projectA/dir1/dir2", 0)]
     [InlineData("/repos/projectB", 1)]
     [InlineData("/repos/projectB/dir1", 0)]
     [InlineData("/repos/projectC", 4)]
