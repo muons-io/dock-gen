@@ -60,6 +60,7 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
                 return env.ContentRootFileProvider;
             });
 
+            services.AddScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>();
             services.AddScoped<IDockGenAnalyser, PlainAnalyser>();
             services.AddScoped<IProjectFileLocator, ProjectFileLocator>();
             services.AddGeneratorCore();

@@ -41,7 +41,9 @@ public sealed class PlainAnalyserTests
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
 
-        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
+        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
+
+        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project");
 
@@ -88,7 +90,9 @@ public sealed class PlainAnalyserTests
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
 
-        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
+        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
+
+        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project/dir1");
 
@@ -140,8 +144,9 @@ public sealed class PlainAnalyserTests
         locatorMock
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
+        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
 
-        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
+        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project/dir1");
 
@@ -204,8 +209,9 @@ public sealed class PlainAnalyserTests
         locatorMock
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
+        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
 
-        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
+        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project");
 
@@ -270,8 +276,9 @@ public sealed class PlainAnalyserTests
         locatorMock
             .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
+        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
 
-        var analyser = new PlainAnalyser(_analyserLogger, fileProvider, locatorMock.Object);
+        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project");
 

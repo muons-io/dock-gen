@@ -1,9 +1,5 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Xml;
-using Microsoft.Build.Construction;
-using Microsoft.Build.Definition;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Generator;
@@ -11,14 +7,17 @@ namespace DockGen.Generator;
 public sealed class PlainAnalyser : IDockGenAnalyser
 {
     private readonly ILogger<PlainAnalyser> _logger;
-    private readonly IFileProvider _fileProvider;
     private readonly IProjectFileLocator _fileLocator;
+    private readonly IProjectEvaluator _projectEvaluator;
 
-    public PlainAnalyser(ILogger<PlainAnalyser> logger, IFileProvider fileProvider, IProjectFileLocator fileLocator)
+    public PlainAnalyser(
+        ILogger<PlainAnalyser> logger,
+        IProjectFileLocator fileLocator,
+        IProjectEvaluator projectEvaluator)
     {
         _logger = logger;
-        _fileProvider = fileProvider;
         _fileLocator = fileLocator;
+        _projectEvaluator = projectEvaluator;
     }
 
     public async ValueTask<List<Project>> AnalyseAsync(AnalyserRequest request, CancellationToken cancellationToken)
@@ -45,25 +44,24 @@ public sealed class PlainAnalyser : IDockGenAnalyser
 
         ct.ThrowIfCancellationRequested();
 
-
         var degreeOfParallelism = Environment.ProcessorCount;
 
         await Parallel.ForEachAsync(projects, new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism },
             async (currentProjectPath, cancellationToken) =>
-        {
-            if (string.IsNullOrEmpty(currentProjectPath))
             {
-                return;
-            }
+                if (string.IsNullOrEmpty(currentProjectPath))
+                {
+                    return;
+                }
 
-            if (dependencyTree.ContainsKey(currentProjectPath))
-            {
-                return;
-            }
+                if (dependencyTree.ContainsKey(currentProjectPath))
+                {
+                    return;
+                }
 
-            var relativeProjectPath = Path.GetRelativePath(workingDirectory, currentProjectPath);
-            await ProcessProjectAsync(workingDirectory, relativeProjectPath, dependencyTree, cancellationToken);
-        });
+                var relativeProjectPath = Path.GetRelativePath(workingDirectory, currentProjectPath);
+                await ProcessProjectAsync(workingDirectory, relativeProjectPath, dependencyTree, cancellationToken);
+            });
 
         var result = new DependencyTreeResult(dependencyTree);
 
@@ -94,25 +92,9 @@ public sealed class PlainAnalyser : IDockGenAnalyser
 
         var stopWatch = Stopwatch.StartNew();
 
-        var fileInfo = _fileProvider.GetFileInfo(relativeProjectPath);
-
-        await using var stream = fileInfo.CreateReadStream();
-        using var xmlReader = XmlReader.Create(stream);
-
-        var globalProperties = FindAllGlobalProperties(workingDirectory, string.Empty, relativeProjectPath);
-
-        var p = Microsoft.Build.Evaluation.Project.FromXmlReader(xmlReader, new ProjectOptions
-        {
-            GlobalProperties = globalProperties
-        });
-
-        var projectReferences = p.Items
-            .Where(x => x.ItemType.Equals("ProjectReference", StringComparison.OrdinalIgnoreCase))
-            .Select(x => x.EvaluatedInclude)
-            .ToList();
-
-        var projectProperties = p.Properties
-            .ToDictionary(x => x.Name, x => x.EvaluatedValue, StringComparer.OrdinalIgnoreCase);
+        var evaluatedProject = await _projectEvaluator.EvaluateAsync(workingDirectory, relativeProjectPath, cancellationToken);
+        var projectProperties = evaluatedProject.Properties;
+        var projectReferences = evaluatedProject.References;
 
         var shallowReferences = new List<Project>();
         foreach (var projectReference in projectReferences)
@@ -143,7 +125,7 @@ public sealed class PlainAnalyser : IDockGenAnalyser
         project = new Project
         {
             ProjectName = Path.GetFileName(relativeProjectPath),
-            ProjectDirectory = Path.GetDirectoryName(relativeProjectPath)!,
+            ProjectDirectory = Path.GetFullPath(Path.GetDirectoryName(relativeProjectPath)!, workingDirectory),
             Properties = projectProperties,
             Items = new Dictionary<string, List<ProjectItem>>(),
             Dependencies = deepReferences
@@ -155,73 +137,6 @@ public sealed class PlainAnalyser : IDockGenAnalyser
         _logger.LogInformation("Analyzed project {ProjectPath} in {ElapsedMilliseconds}ms", relativeProjectPath, stopWatch.ElapsedMilliseconds);
 
         return project;
-    }
-
-    /// <summary>
-    /// Finds all global properties for a project based on Directory.Build.props and Directory.Build.targets files.
-    /// </summary>
-    /// <param name="workingDirectory">The working directory of the project.</param>
-    /// <param name="relativeCurrentPath">The current path being analyzed.</param>
-    /// <param name="relativeProjectPath">The relative path of the project file.</param>
-    /// <returns>A dictionary containing global properties as key-value pairs.</returns>
-    private Dictionary<string, string> FindAllGlobalProperties(string workingDirectory, string relativeCurrentPath, string relativeProjectPath)
-    {
-        string[] readPropertiesFrom =
-        [
-            "Directory.Build.props",
-            "Directory.Build.targets"
-        ];
-
-        var globalProperties = new Dictionary<string, string>();
-
-        var items = _fileProvider.GetDirectoryContents(relativeCurrentPath);
-
-        // we should only analyze directories that are parent to the project file
-        foreach (var item in items)
-        {
-            if (!item.Exists)
-            {
-                continue;
-            }
-
-            if (item.IsDirectory)
-            {
-                var directoryPath = item.PhysicalPath!;
-
-                var buildProperties = FindAllGlobalProperties(workingDirectory, directoryPath, relativeProjectPath);
-                foreach (var property in buildProperties)
-                {
-                    globalProperties[property.Key] = property.Value;
-                }
-            }
-
-            if (readPropertiesFrom.Contains(item.Name))
-            {
-                var buildProperties = ReadPropertiesFromFile(item);
-                foreach (var property in buildProperties)
-                {
-                    globalProperties[property.Key] = property.Value;
-                }
-            }
-        }
-
-        Dictionary<string, string> ReadPropertiesFromFile(IFileInfo fileInfo)
-        {
-            var properties = new Dictionary<string, string>();
-
-            using var stream = fileInfo.CreateReadStream();
-            using var xmlReader = XmlReader.Create(stream);
-            var projectRootElement = ProjectRootElement.Create(xmlReader);
-            foreach (var property in projectRootElement.Properties)
-            {
-                properties[property.Name] = property.Value;
-            }
-
-            return properties;
-        }
-
-
-        return globalProperties;
     }
 
     /// <summary>

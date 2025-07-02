@@ -1,6 +1,7 @@
 ﻿using DockGen.Constants;
 using DockGen.Generator.Extractors;
 using DockGen.Generator.Models;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Generator;
@@ -9,11 +10,13 @@ public sealed class DockerfileGenerator
 {
     private readonly ILogger<DockerfileGenerator> _logger;
     private readonly IExtractor _extractor;
+    private readonly IFileProvider _fileProvider;
 
-    public DockerfileGenerator(ILogger<DockerfileGenerator> logger, IExtractor extractor)
+    public DockerfileGenerator(ILogger<DockerfileGenerator> logger, IExtractor extractor, IFileProvider fileProvider)
     {
         _logger = logger;
         _extractor = extractor;
+        _fileProvider = fileProvider;
     }
 
     public async Task<ExitCodes> GenerateDockerfileAsync(GeneratorConfiguration configuration, Project project, CancellationToken ct = default)
@@ -51,7 +54,7 @@ public sealed class DockerfileGenerator
         var copyFromTo = PrepareCopyDictionary(dockerfileContextDirectory, project);
         var initialCopyFromTo = PrepareInitialCopyDictionary(dockerfileContextDirectory, project);
 
-        var relativeProjectPath = Path.GetRelativePath(dockerfileContextDirectory, project.FullPath).Replace("..\\","");
+        var relativeProjectPath = Path.GetRelativePath(dockerfileContextDirectory, project.ProjectDirectory);
 
         var containerPorts = await _extractor.ExtractAsync(new ContainerPortExtractRequest(project), ct);
 
@@ -72,11 +75,12 @@ public sealed class DockerfileGenerator
         var dockerfile = builder.Build();
 
         var dockerfileName = "Dockerfile";
-        var destinationDirectory = project.ProjectDirectory;
+
+        var destinationFile = Path.Combine(project.ProjectDirectory, dockerfileName);
 
         try
         {
-            await SaveDockerfileAsync(dockerfile, dockerfileName, destinationDirectory, ct);
+            await SaveDockerfileAsync(dockerfile, destinationFile, ct);
             return ExitCodes.Success;
         }
         catch (Exception ex)
@@ -86,15 +90,15 @@ public sealed class DockerfileGenerator
         }
     }
 
-    private static Dictionary<string, string> PrepareInitialCopyDictionary(string dockerfileContext, Project analyzerResult)
+    private static Dictionary<string, string> PrepareInitialCopyDictionary(string dockerfileContext, Project project)
     {
         // get Directory.Build.props, Directory.Build.targets, and NuGet.Config, Directory.Packages.props for project
         // based on project properties
         // and copy it to the root of the project
         var copyFromTo = new Dictionary<string, string>();
 
-        if (analyzerResult.Properties.TryGetValue(MSBuildProperties.GeneralProperties.ImportDirectoryBuildProps, out var importDirectoryBuildProps)
-            && importDirectoryBuildProps == MSBuildProperties.True && analyzerResult.Properties.TryGetValue(MSBuildProperties.GeneralProperties.DirectoryBuildPropsPath, out var directoryBuildPropsPath))
+        if (project.Properties.TryGetValue(MSBuildProperties.GeneralProperties.ImportDirectoryBuildProps, out var importDirectoryBuildProps)
+            && importDirectoryBuildProps == MSBuildProperties.True && project.Properties.TryGetValue(MSBuildProperties.GeneralProperties.DirectoryBuildPropsPath, out var directoryBuildPropsPath))
         {
             var relativeBuildPropsPath = Path.GetRelativePath(dockerfileContext, directoryBuildPropsPath).Replace("..\\","");
             var relativeBuildPropsDirectory = Path.GetDirectoryName(relativeBuildPropsPath)?.Replace("..\\","");
@@ -106,8 +110,8 @@ public sealed class DockerfileGenerator
             copyFromTo.Add(relativeBuildPropsPath, relativeBuildPropsDirectory);
         }
 
-        if (analyzerResult.Properties.TryGetValue(MSBuildProperties.GeneralProperties.ImportDirectoryPackagesProps, out var importDirectoryPackagesProps)
-            && importDirectoryPackagesProps == MSBuildProperties.True && analyzerResult.Properties.TryGetValue(MSBuildProperties.GeneralProperties.DirectoryPackagesPropsPath, out var directoryPackagesPropsPath))
+        if (project.Properties.TryGetValue(MSBuildProperties.GeneralProperties.ImportDirectoryPackagesProps, out var importDirectoryPackagesProps)
+            && importDirectoryPackagesProps == MSBuildProperties.True && project.Properties.TryGetValue(MSBuildProperties.GeneralProperties.DirectoryPackagesPropsPath, out var directoryPackagesPropsPath))
         {
             var relativePackagesPropsPath = Path.GetRelativePath(dockerfileContext, directoryPackagesPropsPath).Replace("..\\","");
             var relativePackagesPropsDirectory = Path.GetDirectoryName(relativePackagesPropsPath)?.Replace("..\\","");
@@ -139,33 +143,11 @@ public sealed class DockerfileGenerator
     {
         var copyFromTo = new Dictionary<string, string>();
 
-        HashSet<Project> visited = new();
-        Stack<Project> projectStack = new();
-
-        projectStack.Push(project);
-
-        while (projectStack.Count > 0)
-        {
-            var projectToVisit = projectStack.Pop();
-            if (visited.Contains(projectToVisit))
-            {
-                continue;
-            }
-
-            var projectDependencies = project.Dependencies.FirstOrDefault(x => x == projectToVisit)?.Dependencies ?? [];
-            foreach (var dependency in projectDependencies)
-            {
-                projectStack.Push(dependency);
-            }
-
-            visited.Add(projectToVisit);
-        }
-
-        var dependencies = visited.Distinct().ToList();
+        var dependencies = project.Dependencies.ToList();
 
         foreach(var dependency in dependencies)
         {
-            var dependencyProjectFileDirectory = Path.GetDirectoryName(dependency.ProjectDirectory);
+            var dependencyProjectFileDirectory = dependency.ProjectDirectory;
 
             var copyFrom = Path.GetRelativePath(dockerfileContextDirectory, dependency.FullPath).Replace("..\\","");
             var copyTo = Path.GetRelativePath(dockerfileContextDirectory, dependencyProjectFileDirectory!).Replace("..\\","");
@@ -175,10 +157,8 @@ public sealed class DockerfileGenerator
         return copyFromTo;
     }
 
-    private async Task SaveDockerfileAsync(string dockerfileContent, string dockerfileName, string destinationDirectory, CancellationToken ct = default)
+    private async Task SaveDockerfileAsync(string dockerfileContent, string dockerfilePath, CancellationToken ct = default)
     {
-        var destination = Path.Combine(destinationDirectory, dockerfileName);
-
-        await File.WriteAllTextAsync(destination, dockerfileContent, ct);
+        await File.WriteAllTextAsync(dockerfilePath, dockerfileContent, ct);
     }
 }

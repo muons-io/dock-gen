@@ -56,8 +56,7 @@ public sealed class ProjectFileLocator : IProjectFileLocator
 
         var projectFiles = new List<string>();
 
-        var solutionPathRelative = Path.GetRelativePath(workingDirectory, solutionPath);
-        var solutionFile = _fileProvider.GetFileInfo(solutionPathRelative);
+        var solutionFile = _fileProvider.GetFileInfo(solutionPath);
         if (!solutionFile.Exists || solutionFile.IsDirectory)
         {
             _logger.LogError("Solution file {SolutionPath} does not exist", solutionPath);
@@ -78,7 +77,8 @@ public sealed class ProjectFileLocator : IProjectFileLocator
             return projectFiles;
         }
 
-        var solution = await serializer.OpenAsync(solutionFile.PhysicalPath!, ct);
+        var solutionFileDirectory = Path.GetDirectoryName(solutionFile.PhysicalPath!);
+        var solution = await serializer.OpenAsync(solutionFileDirectory!, ct);
         foreach (var project in solution.SolutionProjects)
         {
             projectFiles.Add(project.FilePath);
