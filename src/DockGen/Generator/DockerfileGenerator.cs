@@ -1,6 +1,7 @@
-﻿using DockGen.Constants;
-using DockGen.Generator.Extractors;
-using DockGen.Generator.Models;
+﻿using DockGen.Generator.PropertyExtractors;
+using DockGen.Generator.PropertyExtractors.Constants;
+using DockGen.Generator.PropertyExtractors.Extractors;
+using DockGen.Generator.PropertyExtractors.Models;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 

@@ -8,12 +8,12 @@ public sealed class GenerateCommandHandler : ICommandHandler
 {
     private readonly ILogger<GenerateCommandHandler> _logger;
     private readonly DockerfileGenerator _dockerfileGenerator;
-    private readonly IDockGenAnalyser _analyser;
+    private readonly IAnalyser _analyser;
 
     public GenerateCommandHandler(
         ILogger<GenerateCommandHandler> logger,
         DockerfileGenerator dockerfileGenerator,
-        IDockGenAnalyser analyser)
+        IAnalyser analyser)
     {
         _logger = logger;
         _dockerfileGenerator = dockerfileGenerator;
@@ -27,8 +27,6 @@ public sealed class GenerateCommandHandler : ICommandHandler
 
     public async Task<int> InvokeAsync(InvocationContext context)
     {
-        await Task.Yield();
-
         var directoryPath = context.ParseResult.GetValueForOption(GenerateCommand.DirectoryOption);
         var solutionPath = context.ParseResult.GetValueForOption(GenerateCommand.SolutionOption);
         var projectPath = context.ParseResult.GetValueForOption(GenerateCommand.ProjectOption);
@@ -80,6 +78,5 @@ public sealed class GenerateCommandHandler : ICommandHandler
         }
 
         return Directory.GetCurrentDirectory();
-
     }
 }

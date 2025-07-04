@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using DockGen.Generator;
+using DockGen.Generator.ProjectEvaluators;
+using DockGen.Generator.ProjectLocators;
 using DockGen.Tests.Helpers;
 using Microsoft.Build.Locator;
 using Microsoft.Extensions.Logging;
@@ -7,14 +9,14 @@ using Moq;
 
 namespace DockGen.Tests;
 
-public sealed class PlainAnalyserTests
+public sealed class AnalyserTests
 {
-    private readonly ILogger<PlainAnalyser> _analyserLogger = new Mock<ILogger<PlainAnalyser>>().Object;
+    private readonly ILogger<Analyser> _analyserLogger = new Mock<ILogger<Analyser>>().Object;
 
     /// <summary>
     /// Static constructor to register MSBuild defaults. It needs to be called only once per test run
     /// </summary>
-    static PlainAnalyserTests()
+    static AnalyserTests()
     {
         MSBuildLocator.RegisterDefaults();
     }
@@ -43,7 +45,7 @@ public sealed class PlainAnalyserTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
 
-        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
+        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project");
 
@@ -92,7 +94,7 @@ public sealed class PlainAnalyserTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
 
-        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
+        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project/dir1");
 
@@ -146,7 +148,7 @@ public sealed class PlainAnalyserTests
             .ReturnsAsync(projectFilesPath);
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
 
-        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
+        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project/dir1");
 
@@ -211,7 +213,7 @@ public sealed class PlainAnalyserTests
             .ReturnsAsync(projectFilesPath);
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
 
-        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
+        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project");
 
@@ -278,7 +280,7 @@ public sealed class PlainAnalyserTests
             .ReturnsAsync(projectFilesPath);
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider);
 
-        var analyser = new PlainAnalyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
+        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator);
 
         var request = new AnalyserRequest(fileProvider.RootPath,"project");
 

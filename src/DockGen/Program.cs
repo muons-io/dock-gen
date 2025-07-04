@@ -2,8 +2,11 @@
 using System.CommandLine.Builder;
 using System.CommandLine.Hosting;
 using System.CommandLine.Parsing;
+using DockGen;
 using DockGen.Commands.GenerateCommand;
 using DockGen.Generator;
+using DockGen.Generator.ProjectEvaluators;
+using DockGen.Generator.ProjectLocators;
 using Microsoft.Build.Locator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -61,7 +64,7 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
             });
 
             services.AddScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>();
-            services.AddScoped<IDockGenAnalyser, PlainAnalyser>();
+            services.AddScoped<IAnalyser, Analyser>();
             services.AddScoped<IProjectFileLocator, ProjectFileLocator>();
             services.AddGeneratorCore();
         });
