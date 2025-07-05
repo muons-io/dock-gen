@@ -245,7 +245,7 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
         Assert.NotNull(projects);
         Assert.Equal(3, projects.Count);
         Assert.Collection(
-            projects,
+            projects.OrderBy(x => x.ProjectName),
             project =>
             {
                 Assert.Equal("a.csproj", project.ProjectName);
