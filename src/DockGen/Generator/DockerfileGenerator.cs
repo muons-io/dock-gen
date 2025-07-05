@@ -1,7 +1,5 @@
 ﻿using DockGen.Generator.Properties;
 using DockGen.Generator.Properties.Extractors;
-using DockGen.Generator.Properties.Models;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Generator;
@@ -10,13 +8,11 @@ public sealed class DockerfileGenerator
 {
     private readonly ILogger<DockerfileGenerator> _logger;
     private readonly IExtractor _extractor;
-    private readonly IFileProvider _fileProvider;
 
-    public DockerfileGenerator(ILogger<DockerfileGenerator> logger, IExtractor extractor, IFileProvider fileProvider)
+    public DockerfileGenerator(ILogger<DockerfileGenerator> logger, IExtractor extractor)
     {
         _logger = logger;
         _extractor = extractor;
-        _fileProvider = fileProvider;
     }
 
     public async Task<ExitCodes> GenerateDockerfileAsync(GeneratorConfiguration configuration, Project project, CancellationToken ct = default)
@@ -49,11 +45,22 @@ public sealed class DockerfileGenerator
             return ExitCodes.Failure;
         }
 
-        var targetFileNameResult = await _extractor.ExtractAsync(new TargetFileNameExtractRequest(project.Properties), ct);
+        var targetExtResult = await _extractor.ExtractAsync(new TargetExtExtractRequest(project.Properties), ct);
+        if (!targetExtResult.Extracted)
+        {
+            _logger.LogError("Failed to get target extension");
+            return ExitCodes.Failure;
+        }
+
+        string targetName;
+        var targetFileNameResult = await _extractor.ExtractAsync(new TargetNameExtractRequest(project.Properties), ct);
         if (!targetFileNameResult.Extracted)
         {
-            _logger.LogError("Failed to get target file name");
-            return ExitCodes.Failure;
+            targetName = Path.GetFileNameWithoutExtension(project.ProjectName);
+        }
+        else
+        {
+            targetName = targetFileNameResult.Value;
         }
 
         var dockerfileContextDirectory = configuration.DockerfileContextDirectory;
@@ -62,8 +69,6 @@ public sealed class DockerfileGenerator
         var initialCopyFromTo = InitialCopyDictionary(dockerfileContextDirectory, project);
 
         var relativeProjectPath = Path.GetRelativePath(dockerfileContextDirectory, project.ProjectDirectory);
-
-        var containerPorts = await _extractor.ExtractAsync(new ContainerPortExtractRequest(project.Properties), ct);
 
         var builder = new DockerfileBuilder
         {
@@ -74,8 +79,7 @@ public sealed class DockerfileGenerator
             WorkDir = "/app",
             Copy = copyFromTo,
             AdditionalCopy = initialCopyFromTo,
-            TargetFileName = targetFileNameResult.Value,
-            Expose = containerPorts.Extracted ? containerPorts.Value : new List<ContainerPort>(),
+            TargetFileName =$"{targetName}{targetExtResult.Value}",
             MultiArch = configuration.MultiArch
         };
 
@@ -141,7 +145,7 @@ public sealed class DockerfileGenerator
             var dependencyProjectFileDirectory = dependency.ProjectDirectory;
 
             var copyFrom = Path.GetRelativePath(dockerfileContextDirectory, dependency.FullPath).Replace("..\\","");
-            var copyTo = Path.GetRelativePath(dockerfileContextDirectory, dependencyProjectFileDirectory!).Replace("..\\","");
+            var copyTo = Path.GetRelativePath(dockerfileContextDirectory, dependencyProjectFileDirectory).Replace("..\\","");
             copyFromTo.Add(copyFrom, copyTo);
         }
 

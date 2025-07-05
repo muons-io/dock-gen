@@ -20,9 +20,9 @@ public sealed record ContainerBaseImageExtractRequest(Dictionary<string, string>
                 return ExtractResult<string>.Return(image);
             }
 
-            var defaultBuildRegistry = Constants.DockGenConstants.DefaultBaseRegistry;
-            var defaultBuildPort = Constants.DockGenConstants.DefaultBasePort;
-            var defaultBuildRepository = Constants.DockGenConstants.DefaultBaseRepository;
+            var defaultBuildRegistry = DockGenConstants.DefaultBaseRegistry;
+            var defaultBuildPort = DockGenConstants.DefaultBasePort;
+            var defaultBuildRepository = DockGenConstants.DefaultBaseRepository;
 
             var targetFrameworkResult = await _extractor.ExtractAsync(new TargetFrameworkExtractRequest(request.Properties), cancellationToken);
             if (!targetFrameworkResult.Extracted)

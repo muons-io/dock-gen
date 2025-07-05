@@ -22,7 +22,7 @@ public sealed class ProjectFileLocator : IProjectFileLocator
         var projectFiles = (request.RelativeDirectory, request.RelativeSolutionPath, request.RelativeProjectPath) switch
         {
             (_, _, not null) => FindProject(request.RelativeProjectPath),
-            (_, not null, _) => await FindProjectsInSolutionAsync(request.WorkingDirectory, request.RelativeSolutionPath, cancellationToken),
+            (_, not null, _) => await FindProjectsInSolutionAsync(request.RelativeSolutionPath, cancellationToken),
             (not null, _, _) => FindProjectsInDirectory(request.WorkingDirectory, request.RelativeDirectory!),
             _ => FindProjectsInDirectory(request.WorkingDirectory, ".")
         };
@@ -50,7 +50,7 @@ public sealed class ProjectFileLocator : IProjectFileLocator
         return projectFiles;
     }
 
-    private async Task<List<string>> FindProjectsInSolutionAsync(string workingDirectory, string solutionPath, CancellationToken ct = default)
+    private async Task<List<string>> FindProjectsInSolutionAsync(string solutionPath, CancellationToken ct = default)
     {
         var supportedExtensions = new[] { ".sln", ".slnx" };
 

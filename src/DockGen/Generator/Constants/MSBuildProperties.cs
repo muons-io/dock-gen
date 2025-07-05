@@ -21,7 +21,8 @@ public static class MSBuildProperties
         public const string RestoreConfigFile = "RestoreConfigFile";
         public const string SolutionDir = "SolutionDir";
 
-        public const string TargetFileName = "TargetFileName";
+        public const string TargetExt = "TargetExt";
+        public const string TargetName = "TargetName";
         public const string TargetFramework = "TargetFramework";
     }
 

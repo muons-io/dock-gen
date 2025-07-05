@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using DockGen.Generator;
 using DockGen.Generator.Properties;
 using Microsoft.Extensions.DependencyInjection;
 

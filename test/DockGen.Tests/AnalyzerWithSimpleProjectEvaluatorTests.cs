@@ -6,6 +6,7 @@ using DockGen.Tests.Helpers;
 using Microsoft.Build.Locator;
 using Microsoft.Extensions.Logging;
 using Moq;
+// ReSharper disable ParameterOnlyUsedForPreconditionCheck.Local
 
 namespace DockGen.Tests;
 
