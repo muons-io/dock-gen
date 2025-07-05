@@ -2,11 +2,14 @@
 using System.CommandLine.Builder;
 using System.CommandLine.Hosting;
 using System.CommandLine.Parsing;
+using System.Reflection;
 using DockGen;
 using DockGen.Commands.GenerateCommand;
 using DockGen.Generator;
-using DockGen.Generator.ProjectEvaluators;
-using DockGen.Generator.ProjectLocators;
+using DockGen.Generator.Constants;
+using DockGen.Generator.Evaluators;
+using DockGen.Generator.Locators;
+using DockGen.Generator.Properties;
 using Microsoft.Build.Locator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -63,10 +66,14 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
                 return env.ContentRootFileProvider;
             });
 
-            services.AddScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>();
             services.AddScoped<IAnalyser, Analyser>();
+            services.AddKeyedScoped<IProjectEvaluator, SimpleProjectEvaluator>(DockGenConstants.SimpleAnalyserName);
+            services.AddKeyedScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>(DockGenConstants.DesignBuildTimeAnalyserName);
             services.AddScoped<IProjectFileLocator, ProjectFileLocator>();
-            services.AddGeneratorCore();
+            services.AddScoped<IRelevantFileLocator, RelevantFileLocator>();
+            services.AddSingleton<DockerfileGenerator>();
+            services.AddTransient<IExtractor, Extractor>();
+            services.AddExtractorsFromAssembly(Assembly.GetExecutingAssembly());
         });
     })
     .UseDefaults();

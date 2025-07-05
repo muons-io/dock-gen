@@ -1,5 +1,5 @@
 ﻿using DockGen.Generator;
-using DockGen.Generator.ProjectLocators;
+using DockGen.Generator.Locators;
 using Microsoft.Extensions.Logging;
 using Moq;
 

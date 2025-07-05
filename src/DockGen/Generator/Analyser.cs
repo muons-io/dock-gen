@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using DockGen.Generator.ProjectEvaluators;
-using DockGen.Generator.ProjectLocators;
+using DockGen.Generator.Evaluators;
+using DockGen.Generator.Locators;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Generator;
@@ -9,22 +9,22 @@ namespace DockGen.Generator;
 public sealed class Analyser : IAnalyser
 {
     private readonly ILogger<Analyser> _logger;
-    private readonly IProjectFileLocator _fileLocator;
+    private readonly IProjectFileLocator _projectLocator;
     private readonly IProjectEvaluator _projectEvaluator;
 
     public Analyser(
         ILogger<Analyser> logger,
-        IProjectFileLocator fileLocator,
+        IProjectFileLocator projectLocator,
         IProjectEvaluator projectEvaluator)
     {
         _logger = logger;
-        _fileLocator = fileLocator;
+        _projectLocator = projectLocator;
         _projectEvaluator = projectEvaluator;
     }
 
     public async ValueTask<List<Project>> AnalyseAsync(AnalyserRequest request, CancellationToken cancellationToken)
     {
-        var projectFiles = await _fileLocator.LocateProjectFilesAsync(request, cancellationToken);
+        var projectFiles = await _projectLocator.LocateProjectFilesAsync(request, cancellationToken);
 
         var dependencyTree = await BuildDependencyTreeAsync(request.WorkingDirectory, projectFiles, cancellationToken);
 

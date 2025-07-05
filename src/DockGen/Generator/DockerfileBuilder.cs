@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using DockGen.Generator.PropertyExtractors.Models;
+using DockGen.Generator.Properties.Models;
 
 namespace DockGen.Generator;
 

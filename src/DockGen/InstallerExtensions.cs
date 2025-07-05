@@ -1,19 +1,12 @@
 ﻿using System.Reflection;
 using DockGen.Generator;
-using DockGen.Generator.PropertyExtractors;
+using DockGen.Generator.Properties;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DockGen;
 
 public static class InstallerExtensions
 {
-    public static void AddGeneratorCore(this IServiceCollection services)
-    {
-        services.AddSingleton<DockerfileGenerator>();
-        services.AddTransient<IExtractor, Extractor>();
-        services.AddExtractorsFromAssembly(Assembly.GetExecutingAssembly());
-    }
-    
     public static void AddExtractorsFromAssembly(this IServiceCollection services, Assembly assembly)
     {
         var extractors = assembly.GetTypes()

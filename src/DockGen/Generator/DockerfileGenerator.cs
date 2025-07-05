@@ -1,7 +1,7 @@
-﻿using DockGen.Generator.PropertyExtractors;
-using DockGen.Generator.PropertyExtractors.Constants;
-using DockGen.Generator.PropertyExtractors.Extractors;
-using DockGen.Generator.PropertyExtractors.Models;
+﻿using DockGen.Generator.Constants;
+using DockGen.Generator.Properties;
+using DockGen.Generator.Properties.Extractors;
+using DockGen.Generator.Properties.Models;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 
@@ -29,21 +29,21 @@ public sealed class DockerfileGenerator
         //     return ExitCodes.Failure;
         // }
 
-        var buildImageResult = await _extractor.ExtractAsync(new ContainerBuildImageExtractRequest(project), ct);
+        var buildImageResult = await _extractor.ExtractAsync(new ContainerBuildImageExtractRequest(project.Properties), ct);
         if (!buildImageResult.Extracted)
         {
             _logger.LogError("Failed to get build image");
             return ExitCodes.Failure;
         }
 
-        var baseImageResult = await _extractor.ExtractAsync(new ContainerBaseImageExtractRequest(project), ct);
+        var baseImageResult = await _extractor.ExtractAsync(new ContainerBaseImageExtractRequest(project.Properties), ct);
         if (!baseImageResult.Extracted)
         {
             _logger.LogError("Failed to get base image");
             return ExitCodes.Failure;
         }
 
-        var targetFileNameResult = await _extractor.ExtractAsync(new TargetFileNameExtractRequest(project), ct);
+        var targetFileNameResult = await _extractor.ExtractAsync(new TargetFileNameExtractRequest(project.Properties), ct);
         if (!targetFileNameResult.Extracted)
         {
             _logger.LogError("Failed to get target file name");
@@ -57,7 +57,7 @@ public sealed class DockerfileGenerator
 
         var relativeProjectPath = Path.GetRelativePath(dockerfileContextDirectory, project.ProjectDirectory);
 
-        var containerPorts = await _extractor.ExtractAsync(new ContainerPortExtractRequest(project), ct);
+        var containerPorts = await _extractor.ExtractAsync(new ContainerPortExtractRequest(project.Properties), ct);
 
         var builder = new DockerfileBuilder
         {
@@ -145,6 +145,13 @@ public sealed class DockerfileGenerator
         var copyFromTo = new Dictionary<string, string>();
 
         var dependencies = project.Dependencies.ToList();
+
+        // add the project file itself to the copy dictionary
+        var projectFilePath = Path.Combine(project.ProjectDirectory, project.ProjectName);
+        var projectFileDirectory = Path.GetDirectoryName(projectFilePath);
+        var copyProjectFrom = Path.GetRelativePath(dockerfileContextDirectory, projectFilePath).Replace("..\\","");
+        var copyProjectTo = Path.GetRelativePath(dockerfileContextDirectory, projectFileDirectory!).Replace("..\\","");
+        copyFromTo.Add(copyProjectFrom, copyProjectTo);
 
         foreach(var dependency in dependencies)
         {
