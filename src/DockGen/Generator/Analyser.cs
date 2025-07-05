@@ -1,7 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
+using DockGen.Generator.Constants;
 using DockGen.Generator.Evaluators;
 using DockGen.Generator.Locators;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Generator;
@@ -10,46 +12,32 @@ public sealed class Analyser : IAnalyser
 {
     private readonly ILogger<Analyser> _logger;
     private readonly IProjectFileLocator _projectLocator;
-    private readonly IProjectEvaluator _projectEvaluator;
+    private readonly IProjectEvaluator _simpleEvaluator;
+    private readonly IProjectEvaluator _designBuildTimeEvaluator;
 
     public Analyser(
         ILogger<Analyser> logger,
         IProjectFileLocator projectLocator,
-        IProjectEvaluator projectEvaluator)
+        [FromKeyedServices(DockGenConstants.SimpleAnalyserName)] IProjectEvaluator simpleEvaluator,
+        [FromKeyedServices(DockGenConstants.DesignBuildTimeAnalyserName)] IProjectEvaluator designBuildTimeEvaluator)
     {
         _logger = logger;
         _projectLocator = projectLocator;
-        _projectEvaluator = projectEvaluator;
+        _simpleEvaluator = simpleEvaluator;
+        _designBuildTimeEvaluator = designBuildTimeEvaluator;
     }
 
     public async ValueTask<List<Project>> AnalyseAsync(AnalyserRequest request, CancellationToken cancellationToken)
     {
         var projectFiles = await _projectLocator.LocateProjectFilesAsync(request, cancellationToken);
 
-        var dependencyTree = await BuildDependencyTreeAsync(request.WorkingDirectory, projectFiles, cancellationToken);
-
-        var result = dependencyTree.DependencyTree
-            .Where(x => projectFiles.Contains(x.Key))
-            .Select(x => x.Value)
-            .ToList();
-
-        return result;
-    }
-
-    private sealed record DependencyTreeResult(ConcurrentDictionary<string, Project> DependencyTree);
-
-    private async Task<DependencyTreeResult> BuildDependencyTreeAsync(string workingDirectory, List<string> projects, CancellationToken ct = default)
-    {
-        _logger.LogInformation("Building dependency tree for {ProjectCount} project(s)", projects.Count);
+        _logger.LogInformation("Building dependency tree for {ProjectCount} project(s)", projectFiles.Count);
 
         ConcurrentDictionary<string, Project> dependencyTree = new();
 
-        ct.ThrowIfCancellationRequested();
-
         var degreeOfParallelism = Environment.ProcessorCount;
-
-        await Parallel.ForEachAsync(projects, new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism },
-            async (currentProjectPath, cancellationToken) =>
+        await Parallel.ForEachAsync(projectFiles, new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism },
+            async (currentProjectPath, ct) =>
             {
                 if (string.IsNullOrEmpty(currentProjectPath))
                 {
@@ -61,24 +49,27 @@ public sealed class Analyser : IAnalyser
                     return;
                 }
 
-                var relativeProjectPath = Path.GetRelativePath(workingDirectory, currentProjectPath);
-                await ProcessProjectAsync(workingDirectory, relativeProjectPath, dependencyTree, cancellationToken);
+                var relativeProjectPath = Path.GetRelativePath(request.WorkingDirectory, currentProjectPath);
+                await ProcessProjectAsync(request, relativeProjectPath, dependencyTree, ct);
             });
 
-        var result = new DependencyTreeResult(dependencyTree);
+        _logger.LogInformation("Built dependency tree with {ProjectCount} projects",dependencyTree.Count);
 
-        _logger.LogInformation("Built dependency tree with {ProjectCount} projects", result.DependencyTree.Count);
+        var result = dependencyTree
+            .Where(x => projectFiles.Contains(x.Key))
+            .Select(x => x.Value)
+            .ToList();
 
         return result;
     }
 
     private async Task<Project> ProcessProjectAsync(
-        string workingDirectory,
+        AnalyserRequest request,
         string relativeProjectPath,
         ConcurrentDictionary<string, Project> dependencyTree,
         CancellationToken cancellationToken = default)
     {
-        var absoluteProjectPath = Path.GetFullPath(relativeProjectPath, workingDirectory);
+        var absoluteProjectPath = Path.GetFullPath(relativeProjectPath, request.WorkingDirectory);
         if (dependencyTree.TryGetValue(absoluteProjectPath, out var project))
         {
             return project;
@@ -94,7 +85,13 @@ public sealed class Analyser : IAnalyser
 
         var stopWatch = Stopwatch.StartNew();
 
-        var evaluatedProject = await _projectEvaluator.EvaluateAsync(workingDirectory, relativeProjectPath, cancellationToken);
+        var evaluatedProject = request.Analyser switch
+        {
+            DockGenConstants.SimpleAnalyserName => await _simpleEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
+            DockGenConstants.DesignBuildTimeAnalyserName => await _designBuildTimeEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(request.Analyser), request.Analyser, "Unknown analyser type")
+        };
+
         var projectProperties = evaluatedProject.Properties;
         var projectReferences = evaluatedProject.References;
 
@@ -110,14 +107,14 @@ public sealed class Analyser : IAnalyser
             {
                 var currentProjectDirectory = Path.GetDirectoryName(relativeProjectPath);
                 var combinedPath = Path.Combine(currentProjectDirectory ?? string.Empty, projectReference);
-                var normalizedPath = Path.GetFullPath(combinedPath, workingDirectory);
+                var normalizedPath = Path.GetFullPath(combinedPath, request.WorkingDirectory);
 
                 absoluteReferencePath = normalizedPath;
             }
 
-            var relativeReferencePath = Path.GetRelativePath(workingDirectory, absoluteReferencePath);
+            var relativeReferencePath = Path.GetRelativePath(request.WorkingDirectory, absoluteReferencePath);
 
-            var dependency = await ProcessProjectAsync(workingDirectory, relativeReferencePath, dependencyTree, cancellationToken);
+            var dependency = await ProcessProjectAsync(request, relativeReferencePath, dependencyTree, cancellationToken);
 
             shallowReferences.Add(dependency);
         }
@@ -127,7 +124,7 @@ public sealed class Analyser : IAnalyser
         project = new Project
         {
             ProjectName = Path.GetFileName(relativeProjectPath),
-            ProjectDirectory = Path.GetFullPath(Path.GetDirectoryName(relativeProjectPath)!, workingDirectory),
+            ProjectDirectory = Path.GetFullPath(Path.GetDirectoryName(relativeProjectPath)!, request.WorkingDirectory),
             Properties = projectProperties,
             Items = new Dictionary<string, List<ProjectItem>>(),
             Dependencies = deepReferences

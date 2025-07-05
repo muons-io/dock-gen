@@ -1,5 +1,6 @@
 using System.CommandLine.Invocation;
 using DockGen.Generator;
+using DockGen.Generator.Constants;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Commands.GenerateCommand;
@@ -30,6 +31,7 @@ public sealed class GenerateCommandHandler : ICommandHandler
         var directoryPath = context.ParseResult.GetValueForOption(GenerateCommand.DirectoryOption);
         var solutionPath = context.ParseResult.GetValueForOption(GenerateCommand.SolutionOption);
         var projectPath = context.ParseResult.GetValueForOption(GenerateCommand.ProjectOption);
+        var analyserOption = context.ParseResult.GetValueForOption(GenerateCommand.AnalyserOption);
 
         var multiArch = context.ParseResult.GetValueForArgument(GenerateCommand.MultiArchOption);
 
@@ -39,7 +41,8 @@ public sealed class GenerateCommandHandler : ICommandHandler
             WorkingDirectory: workingDirectory,
             RelativeDirectory: string.IsNullOrEmpty(directoryPath) ? null : Path.GetRelativePath(workingDirectory, directoryPath),
             RelativeSolutionPath: string.IsNullOrEmpty(solutionPath) ? null : Path.GetRelativePath(workingDirectory, solutionPath),
-            RelativeProjectPath: string.IsNullOrEmpty(projectPath) ? null : Path.GetRelativePath(workingDirectory, projectPath)
+            RelativeProjectPath: string.IsNullOrEmpty(projectPath) ? null : Path.GetRelativePath(workingDirectory, projectPath),
+            Analyser: analyserOption ?? DockGenConstants.SimpleAnalyserName
         );
 
         var projects = await _analyser.AnalyseAsync(analyserRequest, context.GetCancellationToken());

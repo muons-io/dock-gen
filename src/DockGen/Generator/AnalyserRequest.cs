@@ -1,4 +1,6 @@
-﻿namespace DockGen.Generator;
+﻿using DockGen.Generator.Constants;
+
+namespace DockGen.Generator;
 
 /// <summary>
 /// Represents a request to analyze project or solution files, including information about the working directory,
@@ -20,4 +22,5 @@ public sealed record AnalyserRequest(
     string WorkingDirectory,
     string? RelativeDirectory,
     string? RelativeSolutionPath = null,
-    string? RelativeProjectPath = null);
+    string? RelativeProjectPath = null,
+    string Analyser = DockGenConstants.SimpleAnalyserName);
