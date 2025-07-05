@@ -54,10 +54,12 @@ You can provide these options to tell dock-gen where to find projects or solutio
 ```
 if none of these options are provided, dock-gen will try to locate all projects inside the current directory recursively.
 
+Additional options:
 ```bash
 --analyzer (-a) : which analyzer to use to evaluate project (SimpleAnalyzer | DesignTimeBuildAnalyzer (default))
                   SimpleAnalyzer - plain text parsing of project file
                   DesignTimeBuildAnalyzer - uses Buildalyzer to analyze project, much slower but can extract more information and more reliable
+--multi-arch    : generate multi-arch Dockerfile (default: true)
 ```
 
 Here is an example of how to use the `generate` command:

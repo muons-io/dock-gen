@@ -61,7 +61,6 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
                 if (!string.IsNullOrEmpty(projectPath))
                 {
                     var path = Path.GetDirectoryName(Path.GetFullPath(projectPath));
-                    Directory.SetCurrentDirectory(path!);
                     return new PhysicalFileProvider(path);
                 }
 

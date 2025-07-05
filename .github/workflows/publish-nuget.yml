@@ -13,9 +13,9 @@ jobs:
 
       # Setup .NET Core
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x' # Specify your .NET SDK version
+          dotnet-version: '9.0.x' # Specify your .NET SDK version
 
       # Restore dependencies
       - name: Restore dependencies
