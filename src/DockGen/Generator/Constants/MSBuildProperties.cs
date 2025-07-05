@@ -7,23 +7,22 @@ public static class MSBuildProperties
 
     public static class GeneralProperties
     {
-        public const string TargetFramework = "TargetFramework";
-        public const string TargetFileName = "TargetFileName";
+        public const string DirectoryBuildPropsPath = "DirectoryBuildPropsPath";
+        public const string DirectoryBuildTargetsPath = "DirectoryBuildTargetsPath";
+        public const string DirectoryPackagesPropsPath = "DirectoryPackagesPropsPath";
 
         public const string ImportDirectoryBuildProps = "ImportDirectoryBuildProps";
-        public const string DirectoryBuildPropsPath = "DirectoryBuildPropsPath";
-
         public const string ImportDirectoryBuildTargets = "ImportDirectoryBuildTargets";
-        public const string DirectoryBuildTargetsPath = "DirectoryBuildTargetsPath";
-
         public const string ImportDirectoryPackagesProps = "ImportDirectoryPackagesProps";
-        public const string DirectoryPackagesPropsPath = "DirectoryPackagesPropsPath";
 
         public const string IsTestProject = "IsTestProject";
 
-        public const string RestoreConfigFile = "RestoreConfigFile";
-
         public const string OutputType = "OutputType";
+        public const string RestoreConfigFile = "RestoreConfigFile";
+        public const string SolutionDir = "SolutionDir";
+
+        public const string TargetFileName = "TargetFileName";
+        public const string TargetFramework = "TargetFramework";
     }
 
     public static class ContainerProperties

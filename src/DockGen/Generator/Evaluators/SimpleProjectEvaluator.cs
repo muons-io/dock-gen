@@ -2,7 +2,8 @@
 using DockGen.Generator.Constants;
 using DockGen.Generator.Locators;
 using Microsoft.Build.Construction;
-using Microsoft.Build.Definition;
+using Microsoft.Build.Evaluation;
+using Microsoft.Build.Utilities;
 using Microsoft.Extensions.FileProviders;
 
 namespace DockGen.Generator.Evaluators;
@@ -35,15 +36,13 @@ public sealed class SimpleProjectEvaluator : IProjectEvaluator
         var fileInfo = _fileProvider.GetFileInfo(relativeProjectPath);
 
         var globalProperties = FindAllGlobalProperties(fileInfo.PhysicalPath!, string.Empty);
+        globalProperties.Add(MSBuildProperties.GeneralProperties.SolutionDir, Path.GetDirectoryName(fileInfo.PhysicalPath!)!);
 
         await using var stream = fileInfo.CreateReadStream();
         using var xmlReader = XmlReader.Create(stream);
-        var projectOptions = new ProjectOptions
-        {
-            GlobalProperties = globalProperties
-        };
+        var projectCollection = new ProjectCollection(globalProperties);
+        var p = projectCollection.LoadProject(xmlReader, globalProperties, ToolLocationHelper.CurrentToolsVersion);
 
-        var p = Microsoft.Build.Evaluation.Project.FromXmlReader(xmlReader, projectOptions);
         var projectReferences = p.Items
             .Where(x => x.ItemType.Equals("ProjectReference", StringComparison.OrdinalIgnoreCase))
             .Select(x => x.EvaluatedInclude)

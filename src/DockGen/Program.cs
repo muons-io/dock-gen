@@ -47,18 +47,21 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
                 if (!string.IsNullOrEmpty(directoryPath))
                 {
                     var path = Path.GetFullPath(directoryPath);
+                    Directory.SetCurrentDirectory(path);
                     return new PhysicalFileProvider(path);
                 }
 
                 if (!string.IsNullOrEmpty(solutionPath))
                 {
                     var path = Path.GetDirectoryName(Path.GetFullPath(solutionPath));
+                    Directory.SetCurrentDirectory(path!);
                     return new PhysicalFileProvider(path);
                 }
 
                 if (!string.IsNullOrEmpty(projectPath))
                 {
                     var path = Path.GetDirectoryName(Path.GetFullPath(projectPath));
+                    Directory.SetCurrentDirectory(path!);
                     return new PhysicalFileProvider(path);
                 }
 
