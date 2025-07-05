@@ -15,41 +15,41 @@ public sealed class DockerfileGenerator
         _extractor = extractor;
     }
 
-    public async Task<ExitCodes> GenerateDockerfileAsync(GeneratorConfiguration configuration, Project project, CancellationToken ct = default)
+    public async Task GenerateDockerfileAsync(GeneratorConfiguration configuration, Project project, CancellationToken ct = default)
     {
         var outputTypeResult = await _extractor.ExtractAsync(new OutputTypeExtractRequest(project.Properties), ct);
         if (!outputTypeResult.Extracted || !outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogTrace("Skipping library project {ProjectPath}", project.FullPath);
-            return ExitCodes.Failure;
+            return;
         }
 
         var isTestProjectResult = await _extractor.ExtractAsync(new IsTestProjectExtractRequest(project.Properties), ct);
         if (isTestProjectResult.Extracted && isTestProjectResult.Value)
         {
             _logger.LogTrace("Skipping test project {ProjectPath}", project.FullPath);
-            return ExitCodes.Failure;
+            return;
         }
 
         var buildImageResult = await _extractor.ExtractAsync(new ContainerBuildImageExtractRequest(project.Properties), ct);
         if (!buildImageResult.Extracted)
         {
             _logger.LogError("Failed to get build image");
-            return ExitCodes.Failure;
+            return;
         }
 
         var baseImageResult = await _extractor.ExtractAsync(new ContainerBaseImageExtractRequest(project.Properties), ct);
         if (!baseImageResult.Extracted)
         {
             _logger.LogError("Failed to get base image");
-            return ExitCodes.Failure;
+            return;
         }
 
         var targetExtResult = await _extractor.ExtractAsync(new TargetExtExtractRequest(project.Properties), ct);
         if (!targetExtResult.Extracted)
         {
             _logger.LogError("Failed to get target extension");
-            return ExitCodes.Failure;
+            return;
         }
 
         string targetName;
@@ -92,12 +92,12 @@ public sealed class DockerfileGenerator
         try
         {
             await SaveDockerfileAsync(dockerfile, destinationFile, ct);
-            return ExitCodes.Success;
+            return;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save Dockerfile");
-            return ExitCodes.Failure;
+            return;
         }
     }
 
