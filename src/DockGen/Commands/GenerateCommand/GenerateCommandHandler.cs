@@ -1,6 +1,6 @@
 using System.CommandLine.Invocation;
-using System.Diagnostics.CodeAnalysis;
 using DockGen.Generator;
+using DockGen.Generator.Constants;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Commands.GenerateCommand;
@@ -9,13 +9,16 @@ public sealed class GenerateCommandHandler : ICommandHandler
 {
     private readonly ILogger<GenerateCommandHandler> _logger;
     private readonly DockerfileGenerator _dockerfileGenerator;
-    
+    private readonly IAnalyzer _analyzer;
+
     public GenerateCommandHandler(
-        ILogger<GenerateCommandHandler> logger, 
-        DockerfileGenerator dockerfileGenerator)
+        ILogger<GenerateCommandHandler> logger,
+        DockerfileGenerator dockerfileGenerator,
+        IAnalyzer analyzer)
     {
         _logger = logger;
         _dockerfileGenerator = dockerfileGenerator;
+        _analyzer = analyzer;
     }
 
     public int Invoke(InvocationContext context)
@@ -25,63 +28,58 @@ public sealed class GenerateCommandHandler : ICommandHandler
 
     public async Task<int> InvokeAsync(InvocationContext context)
     {
-        await Task.Yield();
-        
-        var projectPath = context.ParseResult.GetValueForOption(GenerateCommand.ProjectOption);
+        var directoryPath = context.ParseResult.GetValueForOption(GenerateCommand.DirectoryOption);
         var solutionPath = context.ParseResult.GetValueForOption(GenerateCommand.SolutionOption);
-        var noSolution = context.ParseResult.GetValueForArgument(GenerateCommand.NoSolutionOption);
+        var projectPath = context.ParseResult.GetValueForOption(GenerateCommand.ProjectOption);
+        var analyzerOption = context.ParseResult.GetValueForOption(GenerateCommand.AnalyzerOption);
+
         var multiArch = context.ParseResult.GetValueForArgument(GenerateCommand.MultiArchOption);
-        
-        if (string.IsNullOrEmpty(solutionPath) && !TryFindSolutionPath(out solutionPath) && !noSolution)
+
+        var workingDirectory = GetWorkingDirectory(directoryPath, solutionPath, projectPath);
+
+        var analyzerRequest = new AnalyzerRequest(
+            WorkingDirectory: workingDirectory,
+            RelativeDirectory: string.IsNullOrEmpty(directoryPath) ? null : Path.GetRelativePath(workingDirectory, directoryPath),
+            RelativeSolutionPath: string.IsNullOrEmpty(solutionPath) ? null : Path.GetRelativePath(workingDirectory, solutionPath),
+            RelativeProjectPath: string.IsNullOrEmpty(projectPath) ? null : Path.GetRelativePath(workingDirectory, projectPath),
+            Analyzer: analyzerOption ?? DockGenConstants.SimpleAnalyzerName
+        );
+
+        var projects = await _analyzer.AnalyseAsync(analyzerRequest, context.GetCancellationToken());
+
+        var generatorConfiguration = new GeneratorConfiguration
         {
-            _logger.LogError("Failed to find solution path");
-            return (int)ExitCodes.Failure;
-        }
-        
-        if (!string.IsNullOrEmpty(solutionPath) && !File.Exists(solutionPath))
+            DockerfileContextDirectory = workingDirectory,
+            MultiArch = multiArch,
+        };
+
+        foreach(var project in projects)
         {
-            _logger.LogError("Solution file does not exist");
-            return (int)ExitCodes.Failure;
+            await _dockerfileGenerator.GenerateDockerfileAsync(generatorConfiguration, project);
+            _logger.LogInformation("Dockerfile generated for project: {ProjectName}", project.ProjectName);
         }
-        
-        if (!string.IsNullOrEmpty(projectPath) && !File.Exists(projectPath))
-        {
-            _logger.LogError("Project file does not exist");
-            return (int)ExitCodes.Failure;
-        }
-        
-        var result = await _dockerfileGenerator.GenerateDockerfileAsync(null, solutionPath, projectPath, multiArch);
-        
-        return (int)result;
+
+        var result = 0;
+        return result;
     }
 
-    private bool TryFindSolutionPath([NotNullWhen(true)] out string? solutionPath)
+    private string GetWorkingDirectory(string? directoryPath, string? solutionPath, string? projectPath)
     {
-        solutionPath = null;
-        try
+        if (!string.IsNullOrEmpty(directoryPath))
         {
-            var currentDirectory = Directory.GetCurrentDirectory();
-            var solutionFiles = Directory.GetFiles(currentDirectory, "*.sln?");
-            if (solutionFiles.Length == 0)
-            {
-                _logger.LogError("No solution files found");
-                return false;
-            }
-        
-            if (solutionFiles.Length > 1)
-            {
-                _logger.LogError("Multiple solution files found");
-                return false;
-            }
+            return Path.GetFullPath(directoryPath);
+        }
 
-            solutionPath = solutionFiles[0];
-            return true;
-        }
-        catch (Exception ex)
+        if (!string.IsNullOrEmpty(solutionPath))
         {
-            _logger.LogError(ex, "Failed to find solution path");
-            solutionPath = null;
-            return false;
+            return Path.GetDirectoryName(Path.GetFullPath(solutionPath)) ?? Directory.GetCurrentDirectory();
         }
+
+        if (!string.IsNullOrEmpty(projectPath))
+        {
+            return Path.GetDirectoryName(Path.GetFullPath(projectPath)) ?? Directory.GetCurrentDirectory();
+        }
+
+        return Directory.GetCurrentDirectory();
     }
 }

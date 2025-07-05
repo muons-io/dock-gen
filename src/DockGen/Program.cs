@@ -2,9 +2,17 @@
 using System.CommandLine.Builder;
 using System.CommandLine.Hosting;
 using System.CommandLine.Parsing;
+using System.Reflection;
+using DockGen;
 using DockGen.Commands.GenerateCommand;
 using DockGen.Generator;
+using DockGen.Generator.Constants;
+using DockGen.Generator.Evaluators;
+using DockGen.Generator.Locators;
+using DockGen.Generator.Properties;
 using Microsoft.Build.Locator;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -29,7 +37,45 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
         hostBuilder.UseCommandHandler<GenerateCommand, GenerateCommandHandler>();
         hostBuilder.ConfigureServices(services =>
         {
-            services.AddGeneratorCore();
+            services.AddSingleton<IFileProvider>(sp =>
+            {
+                var parseResult = sp.GetRequiredService<ParseResult>();
+                var directoryPath = parseResult.CommandResult.GetValueForOption(GenerateCommand.DirectoryOption);
+                var solutionPath = parseResult.CommandResult.GetValueForOption(GenerateCommand.SolutionOption);
+                var projectPath = parseResult.CommandResult.GetValueForOption(GenerateCommand.ProjectOption);
+
+                if (!string.IsNullOrEmpty(directoryPath))
+                {
+                    var path = Path.GetFullPath(directoryPath);
+                    Directory.SetCurrentDirectory(path);
+                    return new PhysicalFileProvider(path);
+                }
+
+                if (!string.IsNullOrEmpty(solutionPath))
+                {
+                    var path = Path.GetDirectoryName(Path.GetFullPath(solutionPath));
+                    Directory.SetCurrentDirectory(path!);
+                    return new PhysicalFileProvider(path);
+                }
+
+                if (!string.IsNullOrEmpty(projectPath))
+                {
+                    var path = Path.GetDirectoryName(Path.GetFullPath(projectPath));
+                    return new PhysicalFileProvider(path);
+                }
+
+                var env = sp.GetRequiredService<IHostEnvironment>();
+                return env.ContentRootFileProvider;
+            });
+
+            services.AddScoped<IAnalyzer, Analyzer>();
+            services.AddKeyedScoped<IProjectEvaluator, SimpleProjectEvaluator>(DockGenConstants.SimpleAnalyzerName);
+            services.AddKeyedScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>(DockGenConstants.DesignBuildTimeAnalyzerName);
+            services.AddScoped<IProjectFileLocator, ProjectFileLocator>();
+            services.AddScoped<IRelevantFileLocator, RelevantFileLocator>();
+            services.AddSingleton<DockerfileGenerator>();
+            services.AddTransient<IExtractor, Extractor>();
+            services.AddExtractorsFromAssembly(Assembly.GetExecutingAssembly());
         });
     })
     .UseDefaults();
