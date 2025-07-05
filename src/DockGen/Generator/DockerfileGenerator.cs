@@ -91,13 +91,12 @@ public sealed class DockerfileGenerator
 
         try
         {
+            _logger.LogInformation("Saving Dockerfile for project: {ProjectName}", project.ProjectName);
             await SaveDockerfileAsync(dockerfile, destinationFile, ct);
-            return;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save Dockerfile");
-            return;
         }
     }
 

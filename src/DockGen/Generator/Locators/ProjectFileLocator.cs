@@ -24,7 +24,7 @@ public sealed class ProjectFileLocator : IProjectFileLocator
             (_, _, not null) => FindProject(request.RelativeProjectPath),
             (_, not null, _) => await FindProjectsInSolutionAsync(request.RelativeSolutionPath, cancellationToken),
             (not null, _, _) => FindProjectsInDirectory(request.WorkingDirectory, request.RelativeDirectory!),
-            _ => FindProjectsInDirectory(request.WorkingDirectory, ".")
+            _ => FindProjectsInDirectory(request.WorkingDirectory, string.Empty)
         };
 
         if (projectFiles.Count == 0)

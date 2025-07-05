@@ -56,7 +56,6 @@ public sealed class GenerateCommandHandler : ICommandHandler
         foreach(var project in projects)
         {
             await _dockerfileGenerator.GenerateDockerfileAsync(generatorConfiguration, project);
-            _logger.LogInformation("Dockerfile generated for project: {ProjectName}", project.ProjectName);
         }
 
         var result = 0;
