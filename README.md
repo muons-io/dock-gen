@@ -48,9 +48,9 @@ You can use dock-gen with the `generate` command.
 
 You can provide these options to tell dock-gen where to find projects or solutions:
 ```bash
---solution  (-s) : absolute path to a solution file
---project   (-p) : absolute path to a project file
---directory (-d) : absolute path to a directory 
+--solution  (-s) : path to a solution file
+--project   (-p) : path to a project file
+--directory (-d) : path to a directory
 ```
 if none of these options are provided, dock-gen will try to locate all projects inside the current directory recursively.
 
@@ -65,7 +65,7 @@ Additional options:
 Here is an example of how to use the `generate` command:
 
 ```bash
-dotnet dockgen generate -s C:\\repos\MySolution\MySolution.sln -p C:\\repos\MySolution\MyProject\MyProject.csproj
+dotnet dockgen generate --analyzer SimpleAnalyzer --solution .\Solution.slnx
 ```
 
 If no solution or project file is specified, dock-gen will try to find a solution file in the current directory.
