@@ -102,7 +102,7 @@ public sealed class RelevantFileLocator : IRelevantFileLocator
                 }
             }
 
-            if (fileName == item.Name)
+            if (fileName.Equals(item.Name, StringComparison.OrdinalIgnoreCase))
             {
                 filePaths.Add(item.PhysicalPath!);
             }

@@ -25,7 +25,7 @@ public sealed class ProjectFileLocatorTests
 
         var fullPath = Path.GetFullPath(directoryToAnalyze);
         var relativePath = Path.GetRelativePath(fileProvider.RootPath, fullPath);
-        var request = new AnalyserRequest(fileProvider.RootPath, relativePath);
+        var request = new AnalyzerRequest(fileProvider.RootPath, relativePath);
 
         var projects = await locator.LocateProjectFilesAsync(request, CancellationToken.None);
 

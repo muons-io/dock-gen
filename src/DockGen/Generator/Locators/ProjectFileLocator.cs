@@ -15,7 +15,7 @@ public sealed class ProjectFileLocator : IProjectFileLocator
         _fileProvider = fileProvider;
     }
 
-    public async Task<List<string>> LocateProjectFilesAsync(AnalyserRequest request, CancellationToken cancellationToken)
+    public async Task<List<string>> LocateProjectFilesAsync(AnalyzerRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Locating project files for request: {Request}", request);
 
@@ -78,10 +78,11 @@ public sealed class ProjectFileLocator : IProjectFileLocator
         }
 
         var solutionFileDirectory = Path.GetDirectoryName(solutionFile.PhysicalPath!);
-        var solution = await serializer.OpenAsync(solutionFileDirectory!, ct);
+        var solution = await serializer.OpenAsync(solutionFile.PhysicalPath!, ct);
         foreach (var project in solution.SolutionProjects)
         {
-            projectFiles.Add(project.FilePath);
+            var absoluteProjectPath = Path.GetFullPath(project.FilePath, solutionFileDirectory!);
+            projectFiles.Add(absoluteProjectPath);
         }
 
         return projectFiles;

@@ -9,16 +9,16 @@ public sealed class GenerateCommandHandler : ICommandHandler
 {
     private readonly ILogger<GenerateCommandHandler> _logger;
     private readonly DockerfileGenerator _dockerfileGenerator;
-    private readonly IAnalyser _analyser;
+    private readonly IAnalyzer _analyzer;
 
     public GenerateCommandHandler(
         ILogger<GenerateCommandHandler> logger,
         DockerfileGenerator dockerfileGenerator,
-        IAnalyser analyser)
+        IAnalyzer analyzer)
     {
         _logger = logger;
         _dockerfileGenerator = dockerfileGenerator;
-        _analyser = analyser;
+        _analyzer = analyzer;
     }
 
     public int Invoke(InvocationContext context)
@@ -31,21 +31,21 @@ public sealed class GenerateCommandHandler : ICommandHandler
         var directoryPath = context.ParseResult.GetValueForOption(GenerateCommand.DirectoryOption);
         var solutionPath = context.ParseResult.GetValueForOption(GenerateCommand.SolutionOption);
         var projectPath = context.ParseResult.GetValueForOption(GenerateCommand.ProjectOption);
-        var analyserOption = context.ParseResult.GetValueForOption(GenerateCommand.AnalyserOption);
+        var analyzerOption = context.ParseResult.GetValueForOption(GenerateCommand.AnalyzerOption);
 
         var multiArch = context.ParseResult.GetValueForArgument(GenerateCommand.MultiArchOption);
 
         var workingDirectory = GetWorkingDirectory(directoryPath, solutionPath, projectPath);
 
-        var analyserRequest = new AnalyserRequest(
+        var analyzerRequest = new AnalyzerRequest(
             WorkingDirectory: workingDirectory,
             RelativeDirectory: string.IsNullOrEmpty(directoryPath) ? null : Path.GetRelativePath(workingDirectory, directoryPath),
             RelativeSolutionPath: string.IsNullOrEmpty(solutionPath) ? null : Path.GetRelativePath(workingDirectory, solutionPath),
             RelativeProjectPath: string.IsNullOrEmpty(projectPath) ? null : Path.GetRelativePath(workingDirectory, projectPath),
-            Analyser: analyserOption ?? DockGenConstants.SimpleAnalyserName
+            Analyzer: analyzerOption ?? DockGenConstants.SimpleAnalyzerName
         );
 
-        var projects = await _analyser.AnalyseAsync(analyserRequest, context.GetCancellationToken());
+        var projects = await _analyzer.AnalyseAsync(analyzerRequest, context.GetCancellationToken());
 
         var generatorConfiguration = new GeneratorConfiguration
         {

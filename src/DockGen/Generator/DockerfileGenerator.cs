@@ -1,5 +1,4 @@
-﻿using DockGen.Generator.Constants;
-using DockGen.Generator.Properties;
+﻿using DockGen.Generator.Properties;
 using DockGen.Generator.Properties.Extractors;
 using DockGen.Generator.Properties.Models;
 using Microsoft.Extensions.FileProviders;
@@ -22,12 +21,19 @@ public sealed class DockerfileGenerator
 
     public async Task<ExitCodes> GenerateDockerfileAsync(GeneratorConfiguration configuration, Project project, CancellationToken ct = default)
     {
-        // var outputTypeResult = await _extractor.ExtractAsync(new OutputTypeExtractRequest(project), ct);
-        // if (!outputTypeResult.Extracted || !outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase))
-        // {
-        //     _logger.LogError("Skipping library project {ProjectPath}", currentProjectPath);
-        //     return ExitCodes.Failure;
-        // }
+        var outputTypeResult = await _extractor.ExtractAsync(new OutputTypeExtractRequest(project.Properties), ct);
+        if (!outputTypeResult.Extracted || !outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogTrace("Skipping library project {ProjectPath}", project.FullPath);
+            return ExitCodes.Failure;
+        }
+
+        var isTestProjectResult = await _extractor.ExtractAsync(new IsTestProjectExtractRequest(project.Properties), ct);
+        if (isTestProjectResult.Extracted && isTestProjectResult.Value)
+        {
+            _logger.LogTrace("Skipping test project {ProjectPath}", project.FullPath);
+            return ExitCodes.Failure;
+        }
 
         var buildImageResult = await _extractor.ExtractAsync(new ContainerBuildImageExtractRequest(project.Properties), ct);
         if (!buildImageResult.Extracted)
@@ -53,7 +59,7 @@ public sealed class DockerfileGenerator
         var dockerfileContextDirectory = configuration.DockerfileContextDirectory;
 
         var copyFromTo = PrepareCopyDictionary(dockerfileContextDirectory, project);
-        var initialCopyFromTo = PrepareInitialCopyDictionary(dockerfileContextDirectory, project);
+        var initialCopyFromTo = InitialCopyDictionary(dockerfileContextDirectory, project);
 
         var relativeProjectPath = Path.GetRelativePath(dockerfileContextDirectory, project.ProjectDirectory);
 
@@ -91,50 +97,27 @@ public sealed class DockerfileGenerator
         }
     }
 
-    private static Dictionary<string, string> PrepareInitialCopyDictionary(string dockerfileContext, Project project)
+    private static Dictionary<string, string> InitialCopyDictionary(string dockerfileContext, Project project)
     {
-        // get Directory.Build.props, Directory.Build.targets, and NuGet.Config, Directory.Packages.props for project
-        // based on project properties
-        // and copy it to the root of the project
         var copyFromTo = new Dictionary<string, string>();
 
-        if (project.Properties.TryGetValue(MSBuildProperties.GeneralProperties.ImportDirectoryBuildProps, out var importDirectoryBuildProps)
-            && importDirectoryBuildProps == MSBuildProperties.True && project.Properties.TryGetValue(MSBuildProperties.GeneralProperties.DirectoryBuildPropsPath, out var directoryBuildPropsPath))
+        foreach(var relevantFile in project.RelevantFiles)
         {
-            var relativeBuildPropsPath = Path.GetRelativePath(dockerfileContext, directoryBuildPropsPath).Replace("..\\","");
-            var relativeBuildPropsDirectory = Path.GetDirectoryName(relativeBuildPropsPath)?.Replace("..\\","");
-            if (string.IsNullOrEmpty(relativeBuildPropsDirectory))
+            // we need to make sure we use the correct casing, as in linux the file system is case sensitive
+            var fileName = Path.GetFileName(relevantFile);
+            if (string.IsNullOrEmpty(fileName))
             {
-                relativeBuildPropsDirectory = ".";
+                continue;
             }
 
-            copyFromTo.Add(relativeBuildPropsPath, relativeBuildPropsDirectory);
-        }
-
-        if (project.Properties.TryGetValue(MSBuildProperties.GeneralProperties.ImportDirectoryPackagesProps, out var importDirectoryPackagesProps)
-            && importDirectoryPackagesProps == MSBuildProperties.True && project.Properties.TryGetValue(MSBuildProperties.GeneralProperties.DirectoryPackagesPropsPath, out var directoryPackagesPropsPath))
-        {
-            var relativePackagesPropsPath = Path.GetRelativePath(dockerfileContext, directoryPackagesPropsPath).Replace("..\\","");
-            var relativePackagesPropsDirectory = Path.GetDirectoryName(relativePackagesPropsPath)?.Replace("..\\","");
-            if (string.IsNullOrEmpty(relativePackagesPropsDirectory))
+            var relativeFilePath = Path.GetRelativePath(dockerfileContext, relevantFile).Replace("..\\","");
+            var relativeFileDirectory = Path.GetDirectoryName(relativeFilePath)?.Replace("..\\","");
+            if (string.IsNullOrEmpty(relativeFileDirectory))
             {
-                relativePackagesPropsDirectory = ".";
+                relativeFileDirectory = ".";
             }
 
-            copyFromTo.Add(relativePackagesPropsPath, relativePackagesPropsDirectory);
-        }
-
-        // check if context directory contains nuget.config and if so add it to copyFromTo;
-        var dockerfileContextDirectory = Path.GetDirectoryName(dockerfileContext);
-        if (!string.IsNullOrEmpty(dockerfileContextDirectory))
-        {
-            // we need to also make sure we use the correct casing, as in linux the file system is case sensitive
-            var nugetConfigPath = Directory.GetFiles(dockerfileContextDirectory, "nuget.config", SearchOption.TopDirectoryOnly).FirstOrDefault();
-            if (!string.IsNullOrEmpty(nugetConfigPath))
-            {
-                var relativeNugetConfigPath = Path.GetRelativePath(dockerfileContext, nugetConfigPath).Replace("..\\","");
-                copyFromTo.Add(relativeNugetConfigPath, ".");
-            }
+            copyFromTo.Add(relativeFilePath, relativeFileDirectory);
         }
 
         return copyFromTo;

@@ -66,9 +66,9 @@ builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
                 return env.ContentRootFileProvider;
             });
 
-            services.AddScoped<IAnalyser, Analyser>();
-            services.AddKeyedScoped<IProjectEvaluator, SimpleProjectEvaluator>(DockGenConstants.SimpleAnalyserName);
-            services.AddKeyedScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>(DockGenConstants.DesignBuildTimeAnalyserName);
+            services.AddScoped<IAnalyzer, Analyzer>();
+            services.AddKeyedScoped<IProjectEvaluator, SimpleProjectEvaluator>(DockGenConstants.SimpleAnalyzerName);
+            services.AddKeyedScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>(DockGenConstants.DesignBuildTimeAnalyzerName);
             services.AddScoped<IProjectFileLocator, ProjectFileLocator>();
             services.AddScoped<IRelevantFileLocator, RelevantFileLocator>();
             services.AddSingleton<DockerfileGenerator>();

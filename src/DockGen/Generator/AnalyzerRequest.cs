@@ -18,9 +18,9 @@ namespace DockGen.Generator;
 /// <param name="RelativeProjectPath">
 /// The optional path to a specific project file (.csproj). If provided, it allows focusing the analysis on a single project.
 /// </param>
-public sealed record AnalyserRequest(
+public sealed record AnalyzerRequest(
     string WorkingDirectory,
     string? RelativeDirectory,
     string? RelativeSolutionPath = null,
     string? RelativeProjectPath = null,
-    string Analyser = DockGenConstants.SimpleAnalyserName);
+    string Analyzer = DockGenConstants.SimpleAnalyzerName);

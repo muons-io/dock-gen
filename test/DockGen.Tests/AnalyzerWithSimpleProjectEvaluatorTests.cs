@@ -9,14 +9,14 @@ using Moq;
 
 namespace DockGen.Tests;
 
-public sealed class AnalyserWithSimpleProjectEvaluatorTests
+public sealed class AnalyzerWithSimpleProjectEvaluatorTests
 {
-    private readonly ILogger<Analyser> _analyserLogger = new Mock<ILogger<Analyser>>().Object;
+    private readonly ILogger<Analyzer> _analyzerLogger = new Mock<ILogger<Analyzer>>().Object;
 
     /// <summary>
     /// Static constructor to register MSBuild defaults. It needs to be called only once per test run
     /// </summary>
-    static AnalyserWithSimpleProjectEvaluatorTests()
+    static AnalyzerWithSimpleProjectEvaluatorTests()
     {
         MSBuildLocator.RegisterDefaults();
     }
@@ -40,7 +40,7 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
-            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyzerRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
 
         var relevantFileLocatorMock = new Mock<IRelevantFileLocator>();
@@ -50,11 +50,11 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
 
-        var request = new AnalyserRequest(fileProvider.RootPath,"project", Analyser: DockGenConstants.SimpleAnalyserName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
-        var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
+        var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
         Assert.NotNull(projects);
         Assert.Single(projects);
@@ -94,7 +94,7 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
-            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyzerRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
 
         var relevantFileLocatorMock = new Mock<IRelevantFileLocator>();
@@ -104,11 +104,11 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
 
-        var request = new AnalyserRequest(fileProvider.RootPath,"project/dir1", Analyser: DockGenConstants.SimpleAnalyserName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project/dir1", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
-        var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
+        var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
         Assert.NotNull(projects);
         Assert.Single(projects);
@@ -154,7 +154,7 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
-            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyzerRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
 
         var relevantFileLocatorMock = new Mock<IRelevantFileLocator>();
@@ -164,11 +164,11 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
 
-        var request = new AnalyserRequest(fileProvider.RootPath,"project/dir1", Analyser: DockGenConstants.SimpleAnalyserName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project/dir1", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
-        var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
+        var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
         Assert.NotNull(projects);
         Assert.Single(projects);
@@ -225,7 +225,7 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
-            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyzerRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
 
         var relevantFileLocatorMock = new Mock<IRelevantFileLocator>();
@@ -235,11 +235,11 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
 
-        var request = new AnalyserRequest(fileProvider.RootPath,"project", Analyser: DockGenConstants.SimpleAnalyserName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
-        var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
+        var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
         Assert.NotNull(projects);
         Assert.Equal(3, projects.Count);
@@ -298,7 +298,7 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var locatorMock = new Mock<IProjectFileLocator>();
         locatorMock
-            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyserRequest>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyzerRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(projectFilesPath);
 
         var relevantFileLocatorMock = new Mock<IRelevantFileLocator>();
@@ -308,11 +308,11 @@ public sealed class AnalyserWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyser = new Analyser(_analyserLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
 
-        var request = new AnalyserRequest(fileProvider.RootPath,"project", Analyser: DockGenConstants.SimpleAnalyserName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
-        var projects = await analyser.AnalyseAsync(request, CancellationToken.None);
+        var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
         Assert.NotNull(projects);
         Assert.Single(projects);

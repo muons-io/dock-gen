@@ -8,18 +8,18 @@ using Microsoft.Extensions.Logging;
 
 namespace DockGen.Generator;
 
-public sealed class Analyser : IAnalyser
+public sealed class Analyzer : IAnalyzer
 {
-    private readonly ILogger<Analyser> _logger;
+    private readonly ILogger<Analyzer> _logger;
     private readonly IProjectFileLocator _projectLocator;
     private readonly IProjectEvaluator _simpleEvaluator;
     private readonly IProjectEvaluator _designBuildTimeEvaluator;
 
-    public Analyser(
-        ILogger<Analyser> logger,
+    public Analyzer(
+        ILogger<Analyzer> logger,
         IProjectFileLocator projectLocator,
-        [FromKeyedServices(DockGenConstants.SimpleAnalyserName)] IProjectEvaluator simpleEvaluator,
-        [FromKeyedServices(DockGenConstants.DesignBuildTimeAnalyserName)] IProjectEvaluator designBuildTimeEvaluator)
+        [FromKeyedServices(DockGenConstants.SimpleAnalyzerName)] IProjectEvaluator simpleEvaluator,
+        [FromKeyedServices(DockGenConstants.DesignBuildTimeAnalyzerName)] IProjectEvaluator designBuildTimeEvaluator)
     {
         _logger = logger;
         _projectLocator = projectLocator;
@@ -27,11 +27,13 @@ public sealed class Analyser : IAnalyser
         _designBuildTimeEvaluator = designBuildTimeEvaluator;
     }
 
-    public async ValueTask<List<Project>> AnalyseAsync(AnalyserRequest request, CancellationToken cancellationToken)
+    public async ValueTask<List<Project>> AnalyseAsync(AnalyzerRequest request, CancellationToken cancellationToken)
     {
         var projectFiles = await _projectLocator.LocateProjectFilesAsync(request, cancellationToken);
 
         _logger.LogInformation("Building dependency tree for {ProjectCount} project(s)", projectFiles.Count);
+
+        var sw = Stopwatch.StartNew();
 
         ConcurrentDictionary<string, Project> dependencyTree = new();
 
@@ -53,7 +55,7 @@ public sealed class Analyser : IAnalyser
                 await ProcessProjectAsync(request, relativeProjectPath, dependencyTree, ct);
             });
 
-        _logger.LogInformation("Built dependency tree with {ProjectCount} projects",dependencyTree.Count);
+        _logger.LogInformation("Built dependency tree with {ProjectCount} projects in {ElapsedMilliseconds}ms", dependencyTree.Count, sw.ElapsedMilliseconds);
 
         var result = dependencyTree
             .Where(x => projectFiles.Contains(x.Key))
@@ -64,7 +66,7 @@ public sealed class Analyser : IAnalyser
     }
 
     private async Task<Project> ProcessProjectAsync(
-        AnalyserRequest request,
+        AnalyzerRequest request,
         string relativeProjectPath,
         ConcurrentDictionary<string, Project> dependencyTree,
         CancellationToken cancellationToken = default)
@@ -85,15 +87,16 @@ public sealed class Analyser : IAnalyser
 
         var stopWatch = Stopwatch.StartNew();
 
-        var evaluatedProject = request.Analyser switch
+        var evaluatedProject = request.Analyzer switch
         {
-            DockGenConstants.SimpleAnalyserName => await _simpleEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
-            DockGenConstants.DesignBuildTimeAnalyserName => await _designBuildTimeEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
-            _ => throw new ArgumentOutOfRangeException(nameof(request.Analyser), request.Analyser, "Unknown analyser type")
+            DockGenConstants.SimpleAnalyzerName => await _simpleEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
+            DockGenConstants.DesignBuildTimeAnalyzerName => await _designBuildTimeEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(request.Analyzer), request.Analyzer, "Unknown analyzer type")
         };
 
         var projectProperties = evaluatedProject.Properties;
         var projectReferences = evaluatedProject.References;
+        var relevantFiles = evaluatedProject.RelevantFiles;
 
         var shallowReferences = new List<Project>();
         foreach (var projectReference in projectReferences)
@@ -126,8 +129,8 @@ public sealed class Analyser : IAnalyser
             ProjectName = Path.GetFileName(relativeProjectPath),
             ProjectDirectory = Path.GetFullPath(Path.GetDirectoryName(relativeProjectPath)!, request.WorkingDirectory),
             Properties = projectProperties,
-            Items = new Dictionary<string, List<ProjectItem>>(),
-            Dependencies = deepReferences
+            Dependencies = deepReferences.DistinctBy(x => x.FullPath).ToList(),
+            RelevantFiles = relevantFiles
         };
 
         dependencyTree.TryAdd(absoluteProjectPath, project);
@@ -145,16 +148,14 @@ public sealed class Analyser : IAnalyser
     {
         var stack = new Stack<Project>(references);
 
-        var expandedReferences = new List<Project>();
+        var expandedReferences = new HashSet<Project>();
         while (stack.Count > 0)
         {
             var currentProject = stack.Pop();
-            if (expandedReferences.Contains(currentProject))
+            if (!expandedReferences.Add(currentProject))
             {
                 continue;
             }
-
-            expandedReferences.Add(currentProject);
 
             foreach (var dependency in currentProject.Dependencies)
             {
@@ -165,6 +166,6 @@ public sealed class Analyser : IAnalyser
             }
         }
 
-        return expandedReferences;
+        return expandedReferences.ToList();
     }
 }

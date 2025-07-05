@@ -19,6 +19,7 @@ public static class MSBuildProperties
         public const string ImportDirectoryPackagesProps = "ImportDirectoryPackagesProps";
         public const string DirectoryPackagesPropsPath = "DirectoryPackagesPropsPath";
 
+        public const string IsTestProject = "IsTestProject";
 
         public const string RestoreConfigFile = "RestoreConfigFile";
 

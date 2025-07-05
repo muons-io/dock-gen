@@ -19,8 +19,6 @@ public sealed class BuildalyzerProjectEvaluator : IProjectEvaluator
         string workingDirectory,
         string relativeProjectPath, CancellationToken cancellationToken = default)
     {
-        await Task.Yield();
-
         var fileInfo = _fileProvider.GetFileInfo(relativeProjectPath);
 
         AnalyzerManager manager = new AnalyzerManager();

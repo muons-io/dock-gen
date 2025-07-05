@@ -19,6 +19,6 @@ public static class DockGenConstants
     public const string DirectoryPackagesPropsFileName = "Directory.Packages.props";
     public const string NugetConfigFileName = "NuGet.Config";
 
-    public const string SimpleAnalyserName = "SimpleAnalyzer";
-    public const string DesignBuildTimeAnalyserName = "DesignBuildTimeAnalyzer";
+    public const string SimpleAnalyzerName = "SimpleAnalyzer";
+    public const string DesignBuildTimeAnalyzerName = "DesignBuildTimeAnalyzer";
 }
