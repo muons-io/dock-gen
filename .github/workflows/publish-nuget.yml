@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Checkout the repository code
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # Setup .NET Core
       - name: Setup .NET Core SDK
