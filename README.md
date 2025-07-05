@@ -44,10 +44,21 @@ dotnet tool install dockgen
 
 ## Usage
 
-You can use dock-gen with the `generate` command. This command takes two optional parameters:
+You can use dock-gen with the `generate` command. 
 
-- `-s` or `--solution`: To specify an absolute path to a solution file.
-- `-p` or `--project`: To specify an absolute path to a project file.
+You can provide these options to tell dock-gen where to find projects or solutions:
+```bash
+--solution  (-s) : absolute path to a solution file
+--project   (-p) : absolute path to a project file
+--directory (-d) : absolute path to a directory 
+```
+if none of these options are provided, dock-gen will try to locate all projects inside the current directory recursively.
+
+```bash
+--analyzer (-a) : which analyzer to use to evaluate project (SimpleAnalyzer | DesignTimeBuildAnalyzer (default))
+                  SimpleAnalyzer - plain text parsing of project file
+                  DesignTimeBuildAnalyzer - uses Buildalyzer to analyze project, much slower but can extract more information and more reliable
+```
 
 Here is an example of how to use the `generate` command:
 
