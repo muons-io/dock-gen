@@ -14,9 +14,9 @@
     <PackageVersion Include="Serilog.Extensions.Hosting" Version="9.0.0" />
     <PackageVersion Include="Serilog.Extensions.Logging" Version="9.0.2" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
-    <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-    <PackageVersion Include="System.CommandLine.Hosting" Version="0.4.0-alpha.22272.1" />
-    <PackageVersion Include="System.CommandLine.NamingConventionBinder" Version="2.0.0-beta4.22272.1" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.0-beta5.25306.1" />
+    <PackageVersion Include="System.CommandLine.Hosting" Version="0.4.0-alpha.25306.1" />
+    <PackageVersion Include="System.CommandLine.NamingConventionBinder" Version="2.0.0-beta5.25306.1" />
     <PackageVersion Include="Microsoft.Build" Version="17.11.4" />
     <PackageVersion Include="Microsoft.Build.Framework" Version="17.11.4" />
     <PackageVersion Include="Microsoft.Build.Utillities.Core" Version="17.9.5" />
