@@ -51,6 +51,10 @@ public sealed record ContainerBaseImageExtractRequest(Dictionary<string, string>
             {
                 image += $":{tagResult.Value}";
             }
+            else
+            {
+                image += $":{DockGenConstants.DefaultBaseImageTag}";
+            }
 
             if (familyResult.Extracted && !string.IsNullOrEmpty(familyResult.Value))
             {
