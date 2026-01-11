@@ -70,7 +70,7 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
             importStack.Push(importPath);
         }
 
-        importStack.Push(projectPath);
+        importStack.Push(relativeProjectPath);
 
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         while (importStack.TryPop(out var currentPath))
@@ -82,15 +82,22 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
                 continue;
             }
 
-            if (!File.Exists(currentPath))
+            if (!TryOpenStreamForPath(currentPath, out var stream))
             {
                 continue;
             }
 
-            ParseFile(currentPath, properties, references, importStack);
-        }
+            var physicalPath = _fileProvider.GetFileInfo(currentPath).PhysicalPath;
+            if (string.IsNullOrWhiteSpace(physicalPath))
+            {
+                physicalPath = Path.GetFullPath(currentPath, workingDirectory);
+            }
 
-        EnsureDefaultTargetExt(properties);
+            using (stream)
+            {
+                ParseStream(physicalPath, stream, workingDirectory, properties, references, importStack);
+            }
+        }
 
         var relevantFiles = await _relevantFilesLocator.GetRelevantFilesAsync(projectPath, properties, cancellationToken);
 
@@ -98,23 +105,6 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
             Properties: properties,
             References: references,
             RelevantFiles: relevantFiles);
-    }
-
-    private static void EnsureDefaultTargetExt(Dictionary<string, string> properties)
-    {
-        if (properties.TryGetValue(MSBuildProperties.GeneralProperties.TargetExt, out var existing) && !string.IsNullOrWhiteSpace(existing))
-        {
-            return;
-        }
-
-        if (properties.TryGetValue(MSBuildProperties.GeneralProperties.OutputType, out var outputType) &&
-            outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase))
-        {
-            properties[MSBuildProperties.GeneralProperties.TargetExt] = ".exe";
-            return;
-        }
-
-        properties[MSBuildProperties.GeneralProperties.TargetExt] = ".dll";
     }
 
     private static IEnumerable<string> OrderImportsForEvaluation(HashSet<string> importPaths)
@@ -137,7 +127,7 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
         return list;
     }
 
-    private static void AddDirectoryBuildFiles(
+    private void AddDirectoryBuildFiles(
         string projectDirectory,
         string workingDirectory,
         HashSet<string> importPaths)
@@ -146,16 +136,12 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
         {
             foreach (var name in DirectoryBuildFileNames)
             {
-                var candidate = Path.Combine(directory, name);
-                if (File.Exists(candidate))
-                {
-                    importPaths.Add(candidate);
-                }
+                AddImportIfExists(directory, name, workingDirectory, importPaths);
             }
         }
     }
 
-    private static void AddCentralManagementFiles(
+    private void AddCentralManagementFiles(
         string projectDirectory,
         string workingDirectory,
         HashSet<string> importPaths)
@@ -164,12 +150,32 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
         {
             foreach (var name in CentralManagementFileNames)
             {
-                var candidate = Path.Combine(directory, name);
-                if (File.Exists(candidate))
-                {
-                    importPaths.Add(candidate);
-                }
+                AddImportIfExists(directory, name, workingDirectory, importPaths);
             }
+        }
+    }
+
+    private void AddImportIfExists(
+        string directory,
+        string fileName,
+        string workingDirectory,
+        HashSet<string> importPaths)
+    {
+        var absoluteCandidate = Path.Combine(directory, fileName);
+        var relativeCandidate = Path.GetRelativePath(workingDirectory, absoluteCandidate);
+
+        relativeCandidate = relativeCandidate.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        var providerFileInfo = _fileProvider.GetFileInfo(relativeCandidate);
+        if (providerFileInfo.Exists)
+        {
+            importPaths.Add(relativeCandidate);
+            return;
+        }
+
+        if (File.Exists(absoluteCandidate))
+        {
+            importPaths.Add(relativeCandidate);
         }
     }
 
@@ -200,6 +206,12 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
         }
 
         collected.Reverse();
+
+        if (collected.Count == 0 || !PathsEqual(collected[0], workingFullPath))
+        {
+            collected.Insert(0, workingFullPath);
+        }
+
         return collected;
     }
 
@@ -211,13 +223,33 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void ParseFile(
+    private bool TryOpenStreamForPath(string absoluteOrProviderPath, out Stream stream)
+    {
+        var fileInfo = _fileProvider.GetFileInfo(absoluteOrProviderPath);
+        if (fileInfo.Exists)
+        {
+            stream = fileInfo.CreateReadStream();
+            return true;
+        }
+
+        if (File.Exists(absoluteOrProviderPath))
+        {
+            stream = File.OpenRead(absoluteOrProviderPath);
+            return true;
+        }
+
+        stream = Stream.Null;
+        return false;
+    }
+
+    private static void ParseStream(
         string filePath,
+        Stream stream,
+        string workingDirectory,
         Dictionary<string, string> properties,
         List<string> projectReferences,
         Stack<string> importStack)
     {
-        using var stream = File.OpenRead(filePath);
         using var reader = XmlReader.Create(stream, new XmlReaderSettings
         {
             DtdProcessing = DtdProcessing.Prohibit,
@@ -227,13 +259,14 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
 
         while (reader.Read())
         {
-            HandleElement(reader, filePath, properties, projectReferences, importStack);
+            HandleElement(reader, filePath, workingDirectory, properties, projectReferences, importStack);
         }
     }
 
     private static void HandleElement(
         XmlReader reader,
         string filePath,
+        string workingDirectory,
         Dictionary<string, string> properties,
         List<string> projectReferences,
         Stack<string> importStack)
@@ -248,7 +281,7 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
             return;
         }
 
-        if (TryReadImport(reader, filePath, properties, importStack))
+        if (TryReadImport(reader, filePath, workingDirectory, properties, importStack))
         {
             return;
         }
@@ -285,6 +318,7 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
     private static bool TryReadImport(
         XmlReader reader,
         string filePath,
+        string workingDirectory,
         Dictionary<string, string> properties,
         Stack<string> importStack)
     {
@@ -306,10 +340,13 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
         }
 
         var resolvedPath = ResolveImportPath(filePath, expandedProject);
-        if (!string.IsNullOrWhiteSpace(resolvedPath) && File.Exists(resolvedPath))
+        if (string.IsNullOrWhiteSpace(resolvedPath))
         {
-            importStack.Push(resolvedPath);
+            return true;
         }
+
+        var relativePath = Path.GetRelativePath(workingDirectory, resolvedPath);
+        importStack.Push(relativePath);
 
         return true;
     }
