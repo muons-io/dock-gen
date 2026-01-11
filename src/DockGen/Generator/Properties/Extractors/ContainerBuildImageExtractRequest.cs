@@ -51,6 +51,10 @@ public sealed record ContainerBuildImageExtractRequest(Dictionary<string, string
             {
                 image += $":{tagResult.Value}";
             }
+            else
+            {
+                image += $":{DockGenConstants.DefaultBuildImageTag}";
+            }
 
             if (familyResult.Extracted && !string.IsNullOrEmpty(familyResult.Value))
             {
@@ -61,4 +65,3 @@ public sealed record ContainerBuildImageExtractRequest(Dictionary<string, string
         }
     }
 }
-

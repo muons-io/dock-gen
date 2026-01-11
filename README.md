@@ -6,18 +6,10 @@
 
 # dock-gen
 
-dock-gen is a very simple .NET tool designed to generate Dockerfiles for one or multiple projects in a solution based on
-dependencies in a predictable way each time.
+dock-gen is a simple .NET tool designed to generate Dockerfiles for one or multiple projects in a solution based on
+project dependencies.
 
 > Please note, dock-gen is still in its early stages, some features may not be stable.
-
-> Since .NET 7, dotnet comes with a built-in feature to publish app as container image.
-> If you don't need to generate Dockerfiles, you can use the `dotnet publish` command to publish your application as
-> container.
-> For more information, see
-> the [official documentation](https://learn.microsoft.com/en-us/dotnet/core/docker/publish-as-container?pivots=dotnet-8-0).
-> dock-gen is designed to provide more control over the Dockerfile generation process but it may not be suitable for all
-> use cases.
 
 ## Installation
 
@@ -44,7 +36,9 @@ dotnet tool install dockgen
 
 ## Usage
 
-You can use dock-gen with the `generate` command. 
+You can use dock-gen with the `generate` command.
+
+### Inputs
 
 You can provide these options to tell dock-gen where to find projects or solutions:
 ```bash
@@ -52,23 +46,53 @@ You can provide these options to tell dock-gen where to find projects or solutio
 --project   (-p) : path to a project file
 --directory (-d) : path to a directory
 ```
-if none of these options are provided, dock-gen will try to locate all projects inside the current directory recursively.
 
-Additional options:
-```bash
---analyzer (-a) : which analyzer to use to evaluate project (SimpleAnalyzer | DesignTimeBuildAnalyzer (default))
-                  SimpleAnalyzer - plain text parsing of project file
-                  DesignTimeBuildAnalyzer - uses Buildalyzer to analyze project, much slower but can extract more information and more reliable
---multi-arch    : generate multi-arch Dockerfile (default: true)
-```
+If none of these options are provided, dock-gen will try to locate all projects inside the current directory recursively.
 
-Here is an example of how to use the `generate` command:
+### Analyzer selection
+
+`dock-gen` supports multiple analyzers that trade accuracy for performance.
 
 ```bash
-dotnet dockgen generate --analyzer SimpleAnalyzer --solution .\Solution.slnx
+--analyzer (-a) : SimpleAnalyzer | DesignBuildTimeAnalyzer (default) | FastAnalyzer
 ```
 
-If no solution or project file is specified, dock-gen will try to find a solution file in the current directory.
+- `DesignBuildTimeAnalyzer` (default)
+  - Uses Buildalyzer and a design-time build.
+  - Slowest, but generally the most compatible with real-world MSBuild evaluation.
+
+- `SimpleAnalyzer`
+  - Uses MSBuild evaluation (`ProjectCollection.LoadProject`) without running a design-time build.
+  - Reads `Directory.Build.props` / `Directory.Build.targets` in parent directories and injects them as global properties.
+  - Faster than `DesignBuildTimeAnalyzer`, but still depends on MSBuild evaluation and may be slower than `FastAnalyzer` on large solutions.
+
+- `FastAnalyzer`
+  - Optimized for speed and designed to avoid MSBuild project loading.
+  - Reads project files and common repo-wide MSBuild files directly (for example `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`).
+  - Best used when you want a fast dependency graph + enough properties for Dockerfile generation.
+
+### Examples
+
+Generate Dockerfiles for all projects in a solution:
+```bash
+dotnet dockgen generate --solution .\Solution.sln
+```
+
+Use the fast analyzer (recommended for large repos when you don’t need full MSBuild evaluation):
+```bash
+dotnet dockgen generate --analyzer FastAnalyzer --solution .\Solution.sln
+```
+
+If no solution or project file is specified, dock-gen will try to find projects under the current directory.
+
+## Notes and limitations
+
+- `FastAnalyzer` does not run MSBuild. It can’t evaluate all conditional logic, custom tasks, or target execution.
+  If your repo relies heavily on dynamic MSBuild evaluation, prefer `DesignBuildTimeAnalyzer`.
+
+- Cross-platform paths: project references and imports may use Windows-style separators (`..\foo\bar.csproj`).
+  `FastAnalyzer` normalizes common path inputs so dependency resolution works consistently on Linux and Windows.
+
 
 ## Features
 
@@ -83,18 +107,18 @@ here: [Official .NET docs](https://learn.microsoft.com/en-us/dotnet/core/docker/
 
 | Property                 | Description                     | MSBuild Property | Custom Property | Default Value                           |
 |--------------------------|---------------------------------|------------------|-----------------|-----------------------------------------|
-| ContainerBaseImage*      |                                 | &#x2714; yes     | &#x2718; no     | mcr.microsoft.com:443/dotnet/aspnet:8.0 |
+| ContainerBaseImage*      |                                 | &#x2714; yes     | &#x2718; no     | mcr.microsoft.com:443/dotnet/aspnet:10.0 |
 | ContainerRegistry        | Registry of the base image      | &#x2714; yes     | &#x2718; no     | mcr.microsoft.com                       |
 | ContainerRepository      | Repository of the base image    | &#x2714; yes     | &#x2718; no     | dotnet/aspnet                           |
 | ContainerFamily          | Family of the base image        | &#x2714; yes     | &#x2718; no     |
-| ContainerImageTag        | Tag of the base image           | &#x2714; yes     | &#x2718; no     | 8.0                                     |
+| ContainerImageTag        | Tag of the base image           | &#x2714; yes     | &#x2718; no     | 10.0                                     |
 | ContainerBasePort        | Port of the base image          | &#x2718; no      | &#x2714; yes    | 443                                     |
 | ContainerPort            | Port(s) to expose in Dockerfile | &#x2714; yes     | &#x2718; no     |
-| ContainerBuildImage      | Build image for the project     | &#x2718; no      | &#x2714; yes    | mcr.microsoft.com:443/dotnet/sdk:8.0    |
+| ContainerBuildImage      | Build image for the project     | &#x2718; no      | &#x2714; yes    | mcr.microsoft.com:443/dotnet/sdk:10.0    |
 | ContainerBuildRegistry   | Registry of the build image     | &#x2718; no      | &#x2714; yes    | mcr.microsoft.com                       |
 | ContainerBuildRepository | Repository of the build image   | &#x2718; no      | &#x2714; yes    | dotnet/sdk                              |
 | ContainerBuildFamily     | Family of the build image       | &#x2718; no      | &#x2714; yes    |
-| ContainerBuildImageTag   | Tag of the build image          | &#x2718; no      | &#x2714; yes    | 8.0                                     |
+| ContainerBuildImageTag   | Tag of the build image          | &#x2718; no      | &#x2714; yes    | 10.0                                     |
 | ContainerBuildPort       | Port of the build image         | &#x2718; no      | &#x2714; yes    | 443                                     |
 
 ## Roadmap
@@ -112,6 +136,15 @@ dock-gen is open source software licensed under the MIT. See the [LICENSE](LICEN
 ## Contact
 
 If you have any questions or feedback, please feel free to create an issue.
+
+## Troubleshooting
+
+- Dockerfile not generated
+  - Only executable projects (`OutputType=Exe`) get Dockerfiles. Library projects are skipped.
+  - Test projects are skipped.
+
+- Dependency graph looks incomplete
+  - Try `--analyzer DesignBuildTimeAnalyzer` to use MSBuild design-time evaluation.
 
 ## Acknowledgements
 

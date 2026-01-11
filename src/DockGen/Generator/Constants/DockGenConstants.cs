@@ -6,11 +6,13 @@ public static class DockGenConstants
     public const string DefaultBuildPort = "443";
     public const string DefaultBuildRepository = "dotnet/sdk";
     public const string DefaultBuildFamily = "";
+    public const string DefaultBuildImageTag = "10.0";
 
     public const string DefaultBaseRegistry = "mcr.microsoft.com";
     public const string DefaultBasePort = "443";
     public const string DefaultBaseRepository = "dotnet/aspnet";
     public const string DefaultBaseFamily = "";
+    public const string DefaultBaseImageTag = "10.0";
 
     public const string DefaultContainerPortType = "tcp";
 
