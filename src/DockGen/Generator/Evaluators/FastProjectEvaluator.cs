@@ -309,6 +309,7 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
         var include = reader.GetAttribute("Include");
         if (!string.IsNullOrWhiteSpace(include))
         {
+            include = include.Replace('\\', '/');
             projectReferences.Add(include);
         }
 
