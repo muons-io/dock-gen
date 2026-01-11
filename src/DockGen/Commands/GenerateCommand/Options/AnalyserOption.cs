@@ -11,7 +11,7 @@ public sealed class AnalyzerOption : Option<string>
         Description = $"""
                        The name of the analyzer to use. Available options: 
                        - {DockGenConstants.SimpleAnalyzerName} 
-                       - {DockGenConstants.DesignBuildTimeAnalyzerName} (default)";
+                       - {DockGenConstants.DesignBuildTimeAnalyzerName} (default)
                        - {DockGenConstants.FastAnalyzerName}
                        """;
         Required = false;
