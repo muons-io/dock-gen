@@ -8,7 +8,12 @@ public sealed class AnalyzerOption : Option<string>
 {
     public AnalyzerOption() : base("--analyzer")
     {
-        Description = $"The name of the analyzer to use. Available options: {DockGenConstants.SimpleAnalyzerName}, {DockGenConstants.DesignBuildTimeAnalyzerName} (default)";
+        Description = $"""
+                       The name of the analyzer to use. Available options: 
+                       - {DockGenConstants.SimpleAnalyzerName} 
+                       - {DockGenConstants.DesignBuildTimeAnalyzerName} (default)
+                       - {DockGenConstants.FastAnalyzerName}
+                       """;
         Required = false;
         Aliases.Add("-a");
         DefaultValueFactory = _ => DockGenConstants.DesignBuildTimeAnalyzerName;
@@ -18,5 +23,6 @@ public sealed class AnalyzerOption : Option<string>
     {
         yield return new CompletionItem(DockGenConstants.SimpleAnalyzerName, "Simple analyzer that generates Dockerfile based on project type.");
         yield return new CompletionItem(DockGenConstants.DesignBuildTimeAnalyzerName, "Design build time analyzer that generates Dockerfile obtained via design build time information.");
+        yield return new CompletionItem(DockGenConstants.FastAnalyzerName, "Fast analyzer optimized for speed that generates a Dockerfile using lightweight project inspection instead of design-time build information.");
     }
 }

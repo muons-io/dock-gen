@@ -44,6 +44,7 @@ builder.Services.AddFileProvider(args);
 builder.Services.AddScoped<IAnalyzer, Analyzer>();
 builder.Services.AddKeyedScoped<IProjectEvaluator, SimpleProjectEvaluator>(DockGenConstants.SimpleAnalyzerName);
 builder.Services.AddKeyedScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>(DockGenConstants.DesignBuildTimeAnalyzerName);
+builder.Services.AddKeyedScoped<IProjectEvaluator, FastProjectEvaluator>(DockGenConstants.FastAnalyzerName);
 builder.Services.AddScoped<IProjectFileLocator, ProjectFileLocator>();
 builder.Services.AddScoped<IRelevantFileLocator, RelevantFileLocator>();
 builder.Services.AddSingleton<DockerfileGenerator>();

@@ -21,4 +21,5 @@ public static class DockGenConstants
 
     public const string SimpleAnalyzerName = "SimpleAnalyzer";
     public const string DesignBuildTimeAnalyzerName = "DesignBuildTimeAnalyzer";
+    public const string FastAnalyzerName = "FastAnalyzer";
 }

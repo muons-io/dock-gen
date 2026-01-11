@@ -46,10 +46,10 @@ public sealed class DockerfileGenerator
         }
 
         var targetExtResult = await _extractor.ExtractAsync(new TargetExtExtractRequest(project.Properties), ct);
-        if (!targetExtResult.Extracted)
+        var targetExt = targetExtResult.Extracted ? targetExtResult.Value : string.Empty;
+        if (string.IsNullOrWhiteSpace(targetExt))
         {
-            _logger.LogError("Failed to get target extension");
-            return;
+            targetExt = outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase) ? ".exe" : ".dll";
         }
 
         string targetName;
@@ -79,7 +79,7 @@ public sealed class DockerfileGenerator
             WorkDir = "/app",
             Copy = copyFromTo,
             AdditionalCopy = initialCopyFromTo,
-            TargetFileName =$"{targetName}{targetExtResult.Value}",
+            TargetFileName = $"{targetName}{targetExt}",
             MultiArch = configuration.MultiArch
         };
 
@@ -126,7 +126,7 @@ public sealed class DockerfileGenerator
         return copyFromTo;
     }
 
-    private Dictionary<string, string> PrepareCopyDictionary(string dockerfileContextDirectory, Project project)
+    private static Dictionary<string, string> PrepareCopyDictionary(string dockerfileContextDirectory, Project project)
     {
         var copyFromTo = new Dictionary<string, string>();
 
@@ -151,7 +151,7 @@ public sealed class DockerfileGenerator
         return copyFromTo;
     }
 
-    private async Task SaveDockerfileAsync(string dockerfileContent, string dockerfilePath, CancellationToken ct = default)
+    private static async Task SaveDockerfileAsync(string dockerfileContent, string dockerfilePath, CancellationToken ct = default)
     {
         await File.WriteAllTextAsync(dockerfilePath, dockerfileContent, ct);
     }

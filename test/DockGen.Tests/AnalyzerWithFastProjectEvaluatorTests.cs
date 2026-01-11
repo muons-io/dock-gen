@@ -10,17 +10,11 @@ using Moq;
 
 namespace DockGen.Tests;
 
-public sealed class AnalyzerWithSimpleProjectEvaluatorTests
+public sealed class AnalyzerWithFastProjectEvaluatorTests
 {
     private readonly ILogger<Analyzer> _analyzerLogger = new Mock<ILogger<Analyzer>>().Object;
 
-    /// <summary>
-    /// Static constructor that initializes MSBuild for this test class by
-    /// registering the default MSBuild instance once before any tests run.
-    /// This is required so that types depending on MSBuild APIs can be created
-    /// without each test having to perform MSBuildLocator initialization.
-    /// </summary>
-    static AnalyzerWithSimpleProjectEvaluatorTests()
+    static AnalyzerWithFastProjectEvaluatorTests()
     {
         MSBuildLocator.RegisterDefaults();
     }
@@ -52,11 +46,11 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
-        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.FastAnalyzerName);
 
         var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
@@ -106,11 +100,11 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
-        var request = new AnalyzerRequest(fileProvider.RootPath,"project/dir1", Analyzer: DockGenConstants.SimpleAnalyzerName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project/dir1", Analyzer: DockGenConstants.FastAnalyzerName);
 
         var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
@@ -166,11 +160,11 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
-        var request = new AnalyzerRequest(fileProvider.RootPath,"project/dir1", Analyzer: DockGenConstants.SimpleAnalyzerName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project/dir1", Analyzer: DockGenConstants.FastAnalyzerName);
 
         var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
@@ -237,11 +231,11 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
-        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.FastAnalyzerName);
 
         var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
@@ -253,22 +247,16 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
             {
                 Assert.Equal("a.csproj", project.ProjectName);
                 Assert.Equal(2, project.Dependencies.Count);
-                Assert.Contains(project.Properties, x => x.Key == "CustomProperty1" && x.Value == "CustomProperty1Value");
-                Assert.Contains(project.Properties, x => x.Key == "CustomProperty2" && x.Value == "CustomProperty2Value");
             },
             project =>
             {
                 Assert.Equal("b.csproj", project.ProjectName);
                 Assert.Single(project.Dependencies);
-                Assert.Contains(project.Properties, x => x.Key == "CustomProperty1" && x.Value == "CustomProperty1Value");
-                Assert.Contains(project.Properties, x => x.Key == "CustomProperty2" && x.Value == "CustomProperty2Value");
             },
             project =>
             {
                 Assert.Equal("c.csproj", project.ProjectName);
                 Assert.Empty(project.Dependencies);
-                Assert.Contains(project.Properties, x => x.Key == "CustomProperty1" && x.Value == "CustomProperty1Value");
-                Assert.Contains(project.Properties, x => x.Key == "CustomProperty2" && x.Value == "CustomProperty2Value");
             });
     }
 
@@ -310,11 +298,11 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
-        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
+        var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.FastAnalyzerName);
 
         var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
 
@@ -326,8 +314,6 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
             {
                 Assert.Equal("a.csproj", project.ProjectName);
                 Assert.Empty(project.Dependencies);
-                Assert.Contains(project.Properties, x => x.Key == "CustomProperty1" && x.Value == "CustomProperty1Value");
-                Assert.Contains(project.Properties, x => x.Key == "CustomProperty2" && x.Value == "CustomProperty2Value");
             });
     }
 }

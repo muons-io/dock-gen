@@ -14,17 +14,20 @@ public sealed class Analyzer : IAnalyzer
     private readonly IProjectFileLocator _projectLocator;
     private readonly IProjectEvaluator _simpleEvaluator;
     private readonly IProjectEvaluator _designBuildTimeEvaluator;
+    private readonly IProjectEvaluator _fastEvaluator;
 
     public Analyzer(
         ILogger<Analyzer> logger,
         IProjectFileLocator projectLocator,
         [FromKeyedServices(DockGenConstants.SimpleAnalyzerName)] IProjectEvaluator simpleEvaluator,
-        [FromKeyedServices(DockGenConstants.DesignBuildTimeAnalyzerName)] IProjectEvaluator designBuildTimeEvaluator)
+        [FromKeyedServices(DockGenConstants.DesignBuildTimeAnalyzerName)] IProjectEvaluator designBuildTimeEvaluator,
+        [FromKeyedServices(DockGenConstants.FastAnalyzerName)] IProjectEvaluator fastEvaluator)
     {
         _logger = logger;
         _projectLocator = projectLocator;
         _simpleEvaluator = simpleEvaluator;
         _designBuildTimeEvaluator = designBuildTimeEvaluator;
+        _fastEvaluator = fastEvaluator;
     }
 
     public async ValueTask<List<Project>> AnalyseAsync(AnalyzerRequest request, CancellationToken cancellationToken)
@@ -35,7 +38,8 @@ public sealed class Analyzer : IAnalyzer
 
         var sw = Stopwatch.StartNew();
 
-        ConcurrentDictionary<string, Project> dependencyTree = new();
+        ConcurrentDictionary<string, Lazy<Task<Project>>> analysisByAbsolutePath = new(StringComparer.OrdinalIgnoreCase);
+        ConcurrentDictionary<string, Project> dependencyTree = new(StringComparer.OrdinalIgnoreCase);
 
         var degreeOfParallelism = Environment.ProcessorCount;
         await Parallel.ForEachAsync(projectFiles, new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism },
@@ -46,42 +50,69 @@ public sealed class Analyzer : IAnalyzer
                     return;
                 }
 
-                if (dependencyTree.ContainsKey(currentProjectPath))
-                {
-                    return;
-                }
-
                 var relativeProjectPath = Path.GetRelativePath(request.WorkingDirectory, currentProjectPath);
-                await ProcessProjectAsync(request, relativeProjectPath, dependencyTree, ct);
+                await ProcessProjectAsync(request, relativeProjectPath, analysisByAbsolutePath, dependencyTree, ct);
             });
 
         _logger.LogInformation("Built dependency tree with {ProjectCount} projects in {ElapsedMilliseconds}ms", dependencyTree.Count, sw.ElapsedMilliseconds);
 
         var result = dependencyTree
-            .Where(x => projectFiles.Contains(x.Key))
+            .Where(x => projectFiles.Contains(x.Key, StringComparer.OrdinalIgnoreCase))
             .Select(x => x.Value)
             .ToList();
 
         return result;
     }
 
-    private async Task<Project> ProcessProjectAsync(
+    private Task<Project> ProcessProjectAsync(
         AnalyzerRequest request,
         string relativeProjectPath,
+        ConcurrentDictionary<string, Lazy<Task<Project>>> analysisByAbsolutePath,
         ConcurrentDictionary<string, Project> dependencyTree,
         CancellationToken cancellationToken = default)
     {
         var absoluteProjectPath = Path.GetFullPath(relativeProjectPath, request.WorkingDirectory);
-        if (dependencyTree.TryGetValue(absoluteProjectPath, out var project))
+
+        var lazyTask = analysisByAbsolutePath.GetOrAdd(
+            absoluteProjectPath,
+            _ => new Lazy<Task<Project>>(
+                () => AnalyzeProjectAsync(request, relativeProjectPath, absoluteProjectPath, analysisByAbsolutePath, dependencyTree, cancellationToken),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+
+        return AwaitAnalysisAsync(absoluteProjectPath, lazyTask, analysisByAbsolutePath);
+    }
+
+    private async Task<Project> AwaitAnalysisAsync(
+        string absoluteProjectPath,
+        Lazy<Task<Project>> lazyTask,
+        ConcurrentDictionary<string, Lazy<Task<Project>>> analysisByAbsolutePath)
+    {
+        try
         {
-            return project;
+            return await lazyTask.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to analyze project {ProjectPath}", absoluteProjectPath);
+            analysisByAbsolutePath.TryRemove(absoluteProjectPath, out _);
+            throw;
+        }
+    }
+
+    private async Task<Project> AnalyzeProjectAsync(
+        AnalyzerRequest request,
+        string relativeProjectPath,
+        string absoluteProjectPath,
+        ConcurrentDictionary<string, Lazy<Task<Project>>> analysisByAbsolutePath,
+        ConcurrentDictionary<string, Project> dependencyTree,
+        CancellationToken cancellationToken)
+    {
+        if (dependencyTree.TryGetValue(absoluteProjectPath, out var existingProject))
+        {
+            return existingProject;
         }
 
-        if (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogWarning("Operation cancelled while processing project {ProjectPath}", relativeProjectPath);
-            cancellationToken.ThrowIfCancellationRequested();
-        }
+        cancellationToken.ThrowIfCancellationRequested();
 
         _logger.LogInformation("Analyzing project {ProjectPath}...", relativeProjectPath);
 
@@ -91,49 +122,37 @@ public sealed class Analyzer : IAnalyzer
         {
             DockGenConstants.SimpleAnalyzerName => await _simpleEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
             DockGenConstants.DesignBuildTimeAnalyzerName => await _designBuildTimeEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
+            DockGenConstants.FastAnalyzerName => await _fastEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(request.Analyzer), request.Analyzer, "Unknown analyzer type")
         };
 
-        var projectProperties = evaluatedProject.Properties;
-        var projectReferences = evaluatedProject.References;
-        var relevantFiles = evaluatedProject.RelevantFiles;
-
         var shallowReferences = new List<Project>();
-        foreach (var projectReference in projectReferences)
+        foreach (var projectReference in evaluatedProject.References)
         {
-            string absoluteReferencePath;
-            if (Path.IsPathRooted(projectReference))
-            {
-                absoluteReferencePath = projectReference;
-            }
-            else
-            {
-                var currentProjectDirectory = Path.GetDirectoryName(relativeProjectPath);
-                var combinedPath = Path.Combine(currentProjectDirectory ?? string.Empty, projectReference);
-                var normalizedPath = Path.GetFullPath(combinedPath, request.WorkingDirectory);
-
-                absoluteReferencePath = normalizedPath;
-            }
+            var absoluteReferencePath = Path.IsPathRooted(projectReference)
+                ? projectReference
+                : Path.GetFullPath(
+                    Path.Combine(Path.GetDirectoryName(relativeProjectPath) ?? string.Empty, projectReference),
+                    request.WorkingDirectory);
 
             var relativeReferencePath = Path.GetRelativePath(request.WorkingDirectory, absoluteReferencePath);
 
-            var dependency = await ProcessProjectAsync(request, relativeReferencePath, dependencyTree, cancellationToken);
-
+            var dependency = await ProcessProjectAsync(request, relativeReferencePath, analysisByAbsolutePath, dependencyTree, cancellationToken);
             shallowReferences.Add(dependency);
         }
 
         var deepReferences = ExpandReferences(shallowReferences);
 
-        project = new Project
+        var project = new Project
         {
             ProjectName = Path.GetFileName(relativeProjectPath),
             ProjectDirectory = Path.GetFullPath(Path.GetDirectoryName(relativeProjectPath)!, request.WorkingDirectory),
-            Properties = projectProperties,
+            Properties = evaluatedProject.Properties,
             Dependencies = deepReferences.DistinctBy(x => x.FullPath).ToList(),
-            RelevantFiles = relevantFiles
+            RelevantFiles = evaluatedProject.RelevantFiles
         };
 
-        dependencyTree.TryAdd(absoluteProjectPath, project);
+        dependencyTree[absoluteProjectPath] = project;
 
         stopWatch.Stop();
         _logger.LogInformation("Analyzed project {ProjectPath} in {ElapsedMilliseconds}ms", relativeProjectPath, stopWatch.ElapsedMilliseconds);
@@ -141,9 +160,6 @@ public sealed class Analyzer : IAnalyzer
         return project;
     }
 
-    /// <summary>
-    /// This method expands the references of a project
-    /// </summary>
     private List<Project> ExpandReferences(List<Project> references)
     {
         var stack = new Stack<Project>(references);
