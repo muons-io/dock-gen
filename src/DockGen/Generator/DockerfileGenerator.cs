@@ -20,14 +20,18 @@ public sealed class DockerfileGenerator
         var outputTypeResult = await _extractor.ExtractAsync(new OutputTypeExtractRequest(project.Properties), ct);
         if (!outputTypeResult.Extracted || !outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogTrace("Skipping library project {ProjectPath}", project.FullPath);
+            _logger.LogTrace(
+                "Skipping Dockerfile for project {ProjectPath} because OutputType is not Exe (Extracted={Extracted}, Value={Value})",
+                project.FullPath,
+                outputTypeResult.Extracted,
+                outputTypeResult.Extracted ? outputTypeResult.Value : "<missing>");
             return;
         }
 
         var isTestProjectResult = await _extractor.ExtractAsync(new IsTestProjectExtractRequest(project.Properties), ct);
         if (isTestProjectResult.Extracted && isTestProjectResult.Value)
         {
-            _logger.LogTrace("Skipping test project {ProjectPath}", project.FullPath);
+            _logger.LogTrace("Skipping Dockerfile for test project {ProjectPath}", project.FullPath);
             return;
         }
 
@@ -49,7 +53,7 @@ public sealed class DockerfileGenerator
         var targetExt = targetExtResult.Extracted ? targetExtResult.Value : string.Empty;
         if (string.IsNullOrWhiteSpace(targetExt))
         {
-            targetExt = outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase) ? ".exe" : ".dll";
+            targetExt = ".dll";
         }
 
         string targetName;
@@ -105,14 +109,18 @@ public sealed class DockerfileGenerator
         var outputTypeResult = await _extractor.ExtractAsync(new OutputTypeExtractRequest(project.Properties), ct);
         if (!outputTypeResult.Extracted || !outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogTrace("Skipping library project {ProjectPath}", project.FullPath);
+            _logger.LogTrace(
+                "Skipping Dockerfile update for project {ProjectPath} because OutputType is not Exe (Extracted={Extracted}, Value={Value})",
+                project.FullPath,
+                outputTypeResult.Extracted,
+                outputTypeResult.Extracted ? outputTypeResult.Value : "<missing>");
             return;
         }
 
         var isTestProjectResult = await _extractor.ExtractAsync(new IsTestProjectExtractRequest(project.Properties), ct);
         if (isTestProjectResult.Extracted && isTestProjectResult.Value)
         {
-            _logger.LogTrace("Skipping test project {ProjectPath}", project.FullPath);
+            _logger.LogTrace("Skipping Dockerfile update for test project {ProjectPath}", project.FullPath);
             return;
         }
 
@@ -134,7 +142,7 @@ public sealed class DockerfileGenerator
         var targetExt = targetExtResult.Extracted ? targetExtResult.Value : string.Empty;
         if (string.IsNullOrWhiteSpace(targetExt))
         {
-            targetExt = outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase) ? ".exe" : ".dll";
+            targetExt = ".dll";
         }
 
         string targetName;

@@ -316,4 +316,44 @@ public sealed class AnalyzerWithFastProjectEvaluatorTests
                 Assert.Empty(project.Dependencies);
             });
     }
+
+    [Fact]
+    public async Task Analyse_WhenProjectIsWebSdk_CapturesProjectSdkProperty()
+    {
+        var fileProvider = new FakeFileProvider(rootPath: "/repos", items:
+        [
+            new FakeDirectoryInfo("/repos/project"),
+            new FakeFileInfo("/repos/project/web.csproj",
+                """
+                <Project Sdk="Microsoft.NET.Sdk.Web">
+                </Project>
+                """)
+        ]);
+
+        List<string> projectFilesPath =
+        [
+            fileProvider.GetFileInfo("/repos/project/web.csproj").PhysicalPath!
+        ];
+
+        var locatorMock = new Mock<IProjectFileLocator>();
+        locatorMock
+            .Setup(x => x.LocateProjectFilesAsync(It.IsAny<AnalyzerRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(projectFilesPath);
+
+        var relevantFileLocatorMock = new Mock<IRelevantFileLocator>();
+        relevantFileLocatorMock
+            .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
+
+        var request = new AnalyzerRequest(fileProvider.RootPath, "project", Analyzer: DockGenConstants.FastAnalyzerName);
+
+        var projects = await analyzer.AnalyseAsync(request, CancellationToken.None);
+
+        Assert.Single(projects);
+        Assert.True(projects[0].Properties.TryGetValue("MSBuildProjectSdk", out var sdk));
+        Assert.Equal("Microsoft.NET.Sdk.Web", sdk);
+    }
 }

@@ -56,7 +56,10 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
         var knownImportPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            [MSBuildProperties.GeneralProperties.SolutionDir] = projectDirectory
+            [MSBuildProperties.GeneralProperties.SolutionDir] = projectDirectory.EndsWith(Path.DirectorySeparatorChar)
+                ? projectDirectory
+                : projectDirectory + Path.DirectorySeparatorChar,
+            ["MSBuildProjectSdk"] = ReadProjectSdk(fileInfo)
         };
 
         AddDirectoryBuildFiles(projectDirectory, workingDirectory, knownImportPaths);
@@ -522,5 +525,55 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
             value.AsSpan(0, start),
             replacement,
             value.AsSpan(end + 1));
+    }
+
+    private static string ReadProjectSdk(IFileInfo projectFile)
+    {
+        try
+        {
+            Stream stream;
+            if (projectFile.Exists)
+            {
+                stream = projectFile.CreateReadStream();
+            }
+            else if (!string.IsNullOrWhiteSpace(projectFile.PhysicalPath) && File.Exists(projectFile.PhysicalPath))
+            {
+                stream = File.OpenRead(projectFile.PhysicalPath);
+            }
+            else
+            {
+                return string.Empty;
+            }
+
+            using (stream)
+            using (var reader = XmlReader.Create(stream, new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                IgnoreComments = true,
+                IgnoreWhitespace = true
+            }))
+            {
+                while (reader.Read())
+                {
+                    if (reader.NodeType != XmlNodeType.Element)
+                    {
+                        continue;
+                    }
+
+                    if (!reader.Name.Equals("Project", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    return reader.GetAttribute("Sdk") ?? string.Empty;
+                }
+            }
+        }
+        catch
+        {
+            return string.Empty;
+        }
+
+        return string.Empty;
     }
 }
