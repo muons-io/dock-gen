@@ -91,7 +91,7 @@ public sealed class Analyzer : IAnalyzer
         {
             return await lazyTask.Value;
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to analyze project {ProjectPath}", absoluteProjectPath);
             analysisByAbsolutePath.TryRemove(absoluteProjectPath, out _);
