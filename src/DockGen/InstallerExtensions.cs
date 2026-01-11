@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using System.Reflection;
 using DockGen.Commands.GenerateCommand;
+using DockGen.Commands.UpdateCommand;
 using DockGen.Generator.Properties;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -42,12 +43,13 @@ public static class InstallerExtensions
         // there may be a better way to do this in the future, I'll revisit later
         var tempRootCommand = new RootCommand("Temp root command for parsing directory options");
         tempRootCommand.Add(new GenerateCommand());
+        tempRootCommand.Add(new UpdateCommand());
 
         var parseResult = tempRootCommand.Parse(args);
 
-        var directoryPath = parseResult.CommandResult.GetValue(GenerateCommand.DirectoryOption);
-        var solutionPath = parseResult.CommandResult.GetValue(GenerateCommand.SolutionOption);
-        var projectPath = parseResult.CommandResult.GetValue(GenerateCommand.ProjectOption);
+        var directoryPath = parseResult.CommandResult.GetValue(GenerateCommand.DirectoryOption) ?? parseResult.CommandResult.GetValue(UpdateCommand.DirectoryOption);
+        var solutionPath = parseResult.CommandResult.GetValue(GenerateCommand.SolutionOption) ?? parseResult.CommandResult.GetValue(UpdateCommand.SolutionOption);
+        var projectPath = parseResult.CommandResult.GetValue(GenerateCommand.ProjectOption) ?? parseResult.CommandResult.GetValue(UpdateCommand.ProjectOption);
 
         if (!string.IsNullOrEmpty(directoryPath))
         {

@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text;
 using DockGen;
 using DockGen.Commands.GenerateCommand;
+using DockGen.Commands.UpdateCommand;
 using DockGen.Generator;
 using DockGen.Generator.Constants;
 using DockGen.Generator.Evaluators;
@@ -54,6 +55,7 @@ builder.Services.AddExtractorsFromAssembly(Assembly.GetExecutingAssembly());
 var commandHostBuilder = builder.Services.AddRootCommand(new RootCommand("DockGen - Dockerfile Generator for .NET"));
 
 commandHostBuilder.AddCommand<GenerateCommand, GenerateCommandHandler>();
+commandHostBuilder.AddCommand<UpdateCommand, UpdateCommandHandler>();
 commandHostBuilder.Build(args);
 
 using var app = builder.Build();

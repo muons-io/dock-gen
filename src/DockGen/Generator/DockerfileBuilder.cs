@@ -31,6 +31,23 @@ public sealed class DockerfileBuilder
         return sb.ToString();
     }
 
+    public string BuildCopyRestoreBlock()
+    {
+        var sb = new StringBuilder();
+
+        foreach (var (source, destination) in AdditionalCopy.OrderBy(x => x.Key))
+        {
+            sb.AppendLine($"COPY [\"{NormalizeFilePath(source)}\", \"{NormalizeDirectoryPath(destination)}\"]");
+        }
+
+        foreach (var (source, destination) in Copy.OrderBy(x => x.Key))
+        {
+            sb.AppendLine($"COPY [\"{NormalizeFilePath(source)}\", \"{NormalizeDirectoryPath(destination)}\"]");
+        }
+
+        return sb.ToString();
+    }
+
     private StringBuilder BuildBaseLayer(StringBuilder sb)
     {
         if (MultiArch)
@@ -67,15 +84,7 @@ public sealed class DockerfileBuilder
         sb.AppendLine("WORKDIR /src");
         sb.AppendLine();
 
-        foreach (var (source, destination) in AdditionalCopy.OrderBy(x => x.Key))
-        {
-            sb.AppendLine($"COPY [\"{NormalizeFilePath(source)}\", \"{NormalizeDirectoryPath(destination)}\"]");
-        }
-
-        foreach (var (source, destination) in Copy.OrderBy(x => x.Key))
-        {
-            sb.AppendLine($"COPY [\"{NormalizeFilePath(source)}\", \"{NormalizeDirectoryPath(destination)}\"]");
-        }
+        sb.Append(BuildCopyRestoreBlock());
 
         var relativeProjectPath = Path.Combine(ProjectDirectory, ProjectFile);
 

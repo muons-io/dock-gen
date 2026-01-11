@@ -63,7 +63,6 @@ If none of these options are provided, dock-gen will try to locate all projects 
 
 - `SimpleAnalyzer`
   - Uses MSBuild evaluation (`ProjectCollection.LoadProject`) without running a design-time build.
-  - Reads `Directory.Build.props` / `Directory.Build.targets` in parent directories and injects them as global properties.
   - Faster than `DesignBuildTimeAnalyzer`, but still depends on MSBuild evaluation and may be slower than `FastAnalyzer` on large solutions.
 
 - `FastAnalyzer`
@@ -89,10 +88,6 @@ If no solution or project file is specified, dock-gen will try to find projects 
 
 - `FastAnalyzer` does not run MSBuild. It can’t evaluate all conditional logic, custom tasks, or target execution.
   If your repo relies heavily on dynamic MSBuild evaluation, prefer `DesignBuildTimeAnalyzer`.
-
-- Cross-platform paths: project references and imports may use Windows-style separators (`..\foo\bar.csproj`).
-  `FastAnalyzer` normalizes common path inputs so dependency resolution works consistently on Linux and Windows.
-
 
 ## Features
 
