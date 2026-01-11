@@ -6,11 +6,12 @@ namespace DockGen.Commands.GenerateCommand.Options;
 
 public sealed class AnalyzerOption : Option<string>
 {
-    public AnalyzerOption() : base("--analyzer", $"The name of the analyzer to use. Available options: {DockGenConstants.SimpleAnalyzerName}, {DockGenConstants.DesignBuildTimeAnalyzerName} (default)")
+    public AnalyzerOption() : base("--analyzer")
     {
-        IsRequired = false;
-        AddAlias("-a");
-        SetDefaultValue(DockGenConstants.DesignBuildTimeAnalyzerName);
+        Description = $"The name of the analyzer to use. Available options: {DockGenConstants.SimpleAnalyzerName}, {DockGenConstants.DesignBuildTimeAnalyzerName} (default)";
+        Required = false;
+        Aliases.Add("-a");
+        DefaultValueFactory = _ => DockGenConstants.DesignBuildTimeAnalyzerName;
     }
 
     public override IEnumerable<CompletionItem> GetCompletions(CompletionContext context)

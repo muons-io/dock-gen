@@ -4,8 +4,9 @@ namespace DockGen.Commands.GenerateCommand.Options;
 
 public sealed class SolutionOption : Option<string>
 {
-    public SolutionOption() : base("--solution", "The path to the solution file")
+    public SolutionOption() : base("--solution")
     {
-        AddAlias("-s");
+        Description = "The path to the solution file";
+        Aliases.Add("-s");
     }
 }

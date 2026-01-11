@@ -4,8 +4,9 @@ namespace DockGen.Commands.GenerateCommand.Options;
 
 public sealed class DirectoryOption : Option<string>
 {
-    public DirectoryOption() : base("--directory", "The path to the directory")
+    public DirectoryOption() : base("--directory")
     {
-        AddAlias("-d");
+        Description = "The path to the directory";
+        Aliases.Add("-d");
     }
 }

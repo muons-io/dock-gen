@@ -10,18 +10,22 @@ public sealed class GenerateCommand : Command
     public static readonly ProjectOption ProjectOption = new ();
     public static readonly AnalyzerOption AnalyzerOption = new ();
 
-    public static readonly Argument<bool> MultiArchOption = new("--multi-arch", () => true, "Build for multiple architectures. Default is true");
+    public static readonly Argument<bool> MultiArchOption = new("--multi-arch")
+    {
+        Description = "Build for multiple architectures. Default is true",
+        DefaultValueFactory = _ => true
+    };
 
     public GenerateCommand() : base("generate", "Generate Dockerfile")
     {
-        AddAlias("gen");
-        AddAlias("g");
+        Aliases.Add("gen");
+        Aliases.Add("g");
 
-        AddOption(DirectoryOption);
-        AddOption(SolutionOption);
-        AddOption(ProjectOption);
-        AddOption(AnalyzerOption);
+        Options.Add(DirectoryOption);
+        Options.Add(SolutionOption);
+        Options.Add(ProjectOption);
+        Options.Add(AnalyzerOption);
 
-        AddArgument(MultiArchOption);
+        Arguments.Add(MultiArchOption);
     }
 }

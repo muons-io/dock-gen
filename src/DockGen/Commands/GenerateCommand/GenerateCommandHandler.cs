@@ -1,11 +1,11 @@
-using System.CommandLine.Invocation;
+using System.CommandLine;
 using DockGen.Generator;
 using DockGen.Generator.Constants;
 using Microsoft.Extensions.Logging;
 
 namespace DockGen.Commands.GenerateCommand;
 
-public sealed class GenerateCommandHandler : ICommandHandler
+public sealed class GenerateCommandHandler : ICommandHandler<GenerateCommand>
 {
     private readonly ILogger<GenerateCommandHandler> _logger;
     private readonly DockerfileGenerator _dockerfileGenerator;
@@ -21,19 +21,14 @@ public sealed class GenerateCommandHandler : ICommandHandler
         _analyzer = analyzer;
     }
 
-    public int Invoke(InvocationContext context)
+    public async Task<int> HandleAsync(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
-    }
+        var directoryPath = parseResult.GetValue(GenerateCommand.DirectoryOption);
+        var solutionPath = parseResult.GetValue(GenerateCommand.SolutionOption);
+        var projectPath = parseResult.GetValue(GenerateCommand.ProjectOption);
+        var analyzerOption = parseResult.GetValue(GenerateCommand.AnalyzerOption);
 
-    public async Task<int> InvokeAsync(InvocationContext context)
-    {
-        var directoryPath = context.ParseResult.GetValueForOption(GenerateCommand.DirectoryOption);
-        var solutionPath = context.ParseResult.GetValueForOption(GenerateCommand.SolutionOption);
-        var projectPath = context.ParseResult.GetValueForOption(GenerateCommand.ProjectOption);
-        var analyzerOption = context.ParseResult.GetValueForOption(GenerateCommand.AnalyzerOption);
-
-        var multiArch = context.ParseResult.GetValueForArgument(GenerateCommand.MultiArchOption);
+        var multiArch = parseResult.GetValue(GenerateCommand.MultiArchOption);
 
         var workingDirectory = GetWorkingDirectory(directoryPath, solutionPath, projectPath);
 
@@ -45,7 +40,7 @@ public sealed class GenerateCommandHandler : ICommandHandler
             Analyzer: analyzerOption ?? DockGenConstants.SimpleAnalyzerName
         );
 
-        var projects = await _analyzer.AnalyseAsync(analyzerRequest, context.GetCancellationToken());
+        var projects = await _analyzer.AnalyseAsync(analyzerRequest, cancellationToken);
 
         var generatorConfiguration = new GeneratorConfiguration
         {
@@ -53,13 +48,22 @@ public sealed class GenerateCommandHandler : ICommandHandler
             MultiArch = multiArch,
         };
 
-        foreach(var project in projects)
-        {
-            await _dockerfileGenerator.GenerateDockerfileAsync(generatorConfiguration, project);
-        }
+        _logger.LogInformation("Generating Dockerfiles for {ProjectCount} projects", projects.Count);
 
-        var result = 0;
-        return result;
+        try
+        {
+            foreach(var project in projects)
+            {
+                await _dockerfileGenerator.GenerateDockerfileAsync(generatorConfiguration, project, cancellationToken);
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating Dockerfiles");
+            return 1;
+        }
     }
 
     private string GetWorkingDirectory(string? directoryPath, string? solutionPath, string? projectPath)
