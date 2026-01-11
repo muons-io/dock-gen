@@ -1,8 +1,6 @@
 ﻿using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.Hosting;
-using System.CommandLine.Parsing;
 using System.Reflection;
+using System.Text;
 using DockGen;
 using DockGen.Commands.GenerateCommand;
 using DockGen.Generator;
@@ -11,75 +9,66 @@ using DockGen.Generator.Evaluators;
 using DockGen.Generator.Locators;
 using DockGen.Generator.Properties;
 using Microsoft.Build.Locator;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
 
+Console.OutputEncoding = Encoding.UTF8;
+
 MSBuildLocator.RegisterDefaults();
 
-var rootCommand = new RootCommand("DockGen - Dockerfile Generator for .NET");
-rootCommand.AddCommand(new GenerateCommand());
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, eventArgs) =>
+{
+    cts.Cancel();
+    eventArgs.Cancel = true;
+};
 
-var builder = new CommandLineBuilder(rootCommand);
-builder.UseHost(_ => Host.CreateDefaultBuilder(), hostBuilder =>
-    {
-        hostBuilder.ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddSerilog();
-        });
-        hostBuilder.UseSerilog((_, config) =>
-        {
-            config.WriteTo.Console();
-        });
-        hostBuilder.UseCommandHandler<GenerateCommand, GenerateCommandHandler>();
-        hostBuilder.ConfigureServices(services =>
-        {
-            services.AddSingleton<IFileProvider>(sp =>
-            {
-                var parseResult = sp.GetRequiredService<ParseResult>();
-                var directoryPath = parseResult.CommandResult.GetValueForOption(GenerateCommand.DirectoryOption);
-                var solutionPath = parseResult.CommandResult.GetValueForOption(GenerateCommand.SolutionOption);
-                var projectPath = parseResult.CommandResult.GetValueForOption(GenerateCommand.ProjectOption);
+var settings = new HostApplicationBuilderSettings
+{
+    Configuration = new ConfigurationManager()
+};
+settings.Configuration.AddEnvironmentVariables();
 
-                if (!string.IsNullOrEmpty(directoryPath))
-                {
-                    var path = Path.GetFullPath(directoryPath);
-                    Directory.SetCurrentDirectory(path);
-                    return new PhysicalFileProvider(path);
-                }
+var builder = Host.CreateEmptyApplicationBuilder(settings);
+builder.Logging.ClearProviders();
 
-                if (!string.IsNullOrEmpty(solutionPath))
-                {
-                    var path = Path.GetDirectoryName(Path.GetFullPath(solutionPath));
-                    Directory.SetCurrentDirectory(path!);
-                    return new PhysicalFileProvider(path);
-                }
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateLogger();
+builder.Logging.AddSerilog(Log.Logger);
+builder.Services.AddFileProvider(args);
 
-                if (!string.IsNullOrEmpty(projectPath))
-                {
-                    var path = Path.GetDirectoryName(Path.GetFullPath(projectPath));
-                    return new PhysicalFileProvider(path);
-                }
+builder.Services.AddScoped<IAnalyzer, Analyzer>();
+builder.Services.AddKeyedScoped<IProjectEvaluator, SimpleProjectEvaluator>(DockGenConstants.SimpleAnalyzerName);
+builder.Services.AddKeyedScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>(DockGenConstants.DesignBuildTimeAnalyzerName);
+builder.Services.AddScoped<IProjectFileLocator, ProjectFileLocator>();
+builder.Services.AddScoped<IRelevantFileLocator, RelevantFileLocator>();
+builder.Services.AddSingleton<DockerfileGenerator>();
+builder.Services.AddTransient<IExtractor, Extractor>();
+builder.Services.AddExtractorsFromAssembly(Assembly.GetExecutingAssembly());
 
-                var env = sp.GetRequiredService<IHostEnvironment>();
-                return env.ContentRootFileProvider;
-            });
+var commandHostBuilder = builder.Services.AddRootCommand(new RootCommand("DockGen - Dockerfile Generator for .NET"));
 
-            services.AddScoped<IAnalyzer, Analyzer>();
-            services.AddKeyedScoped<IProjectEvaluator, SimpleProjectEvaluator>(DockGenConstants.SimpleAnalyzerName);
-            services.AddKeyedScoped<IProjectEvaluator, BuildalyzerProjectEvaluator>(DockGenConstants.DesignBuildTimeAnalyzerName);
-            services.AddScoped<IProjectFileLocator, ProjectFileLocator>();
-            services.AddScoped<IRelevantFileLocator, RelevantFileLocator>();
-            services.AddSingleton<DockerfileGenerator>();
-            services.AddTransient<IExtractor, Extractor>();
-            services.AddExtractorsFromAssembly(Assembly.GetExecutingAssembly());
-        });
-    })
-    .UseDefaults();
+commandHostBuilder.AddCommand<GenerateCommand, GenerateCommandHandler>();
+commandHostBuilder.Build(args);
 
-var parser = builder.Build();
+using var app = builder.Build();
 
-return await parser.InvokeAsync(args);
+await app.StartAsync().ConfigureAwait(false);
+
+var executionService = app.Services.GetRequiredService<ExecutionService>();
+
+var invokeConfig = new InvocationConfiguration()
+{
+    EnableDefaultExceptionHandler = true
+};
+
+var exitCode = await executionService.ExecuteAsync(invokeConfig, cts.Token);
+
+await app.StopAsync().ConfigureAwait(false);
+
+return exitCode;
+

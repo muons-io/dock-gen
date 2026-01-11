@@ -15,7 +15,10 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
     private readonly ILogger<Analyzer> _analyzerLogger = new Mock<ILogger<Analyzer>>().Object;
 
     /// <summary>
-    /// Static constructor to register MSBuild defaults. It needs to be called only once per test run
+    /// Static constructor that initializes MSBuild for this test class by
+    /// registering the default MSBuild instance once before any tests run.
+    /// This is required so that types depending on MSBuild APIs can be created
+    /// without each test having to perform MSBuildLocator initialization.
     /// </summary>
     static AnalyzerWithSimpleProjectEvaluatorTests()
     {
