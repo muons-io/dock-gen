@@ -54,7 +54,7 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
 
         var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
@@ -108,7 +108,7 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
 
         var request = new AnalyzerRequest(fileProvider.RootPath,"project/dir1", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
@@ -168,7 +168,7 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
 
         var request = new AnalyzerRequest(fileProvider.RootPath,"project/dir1", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
@@ -239,7 +239,7 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
 
         var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
 
@@ -312,7 +312,7 @@ public sealed class AnalyzerWithSimpleProjectEvaluatorTests
 
         var simpleProjectEvaluator = new SimpleProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
 
-        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!);
+        var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, simpleProjectEvaluator, null!, null!);
 
         var request = new AnalyzerRequest(fileProvider.RootPath,"project", Analyzer: DockGenConstants.SimpleAnalyzerName);
 

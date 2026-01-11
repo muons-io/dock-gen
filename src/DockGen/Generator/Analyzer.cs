@@ -14,17 +14,20 @@ public sealed class Analyzer : IAnalyzer
     private readonly IProjectFileLocator _projectLocator;
     private readonly IProjectEvaluator _simpleEvaluator;
     private readonly IProjectEvaluator _designBuildTimeEvaluator;
+    private readonly IProjectEvaluator _fastEvaluator;
 
     public Analyzer(
         ILogger<Analyzer> logger,
         IProjectFileLocator projectLocator,
         [FromKeyedServices(DockGenConstants.SimpleAnalyzerName)] IProjectEvaluator simpleEvaluator,
-        [FromKeyedServices(DockGenConstants.DesignBuildTimeAnalyzerName)] IProjectEvaluator designBuildTimeEvaluator)
+        [FromKeyedServices(DockGenConstants.DesignBuildTimeAnalyzerName)] IProjectEvaluator designBuildTimeEvaluator,
+        [FromKeyedServices(DockGenConstants.FastAnalyzerName)] IProjectEvaluator fastEvaluator)
     {
         _logger = logger;
         _projectLocator = projectLocator;
         _simpleEvaluator = simpleEvaluator;
         _designBuildTimeEvaluator = designBuildTimeEvaluator;
+        _fastEvaluator = fastEvaluator;
     }
 
     public async ValueTask<List<Project>> AnalyseAsync(AnalyzerRequest request, CancellationToken cancellationToken)
@@ -119,6 +122,7 @@ public sealed class Analyzer : IAnalyzer
         {
             DockGenConstants.SimpleAnalyzerName => await _simpleEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
             DockGenConstants.DesignBuildTimeAnalyzerName => await _designBuildTimeEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
+            DockGenConstants.FastAnalyzerName => await _fastEvaluator.EvaluateAsync(request.WorkingDirectory, relativeProjectPath, cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(request.Analyzer), request.Analyzer, "Unknown analyzer type")
         };
 
