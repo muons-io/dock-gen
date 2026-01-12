@@ -11,12 +11,12 @@ public sealed class AnalyzerOption : Option<string>
         Description = $"""
                        The name of the analyzer to use. Available options: 
                        - {DockGenConstants.SimpleAnalyzerName} 
-                       - {DockGenConstants.DesignBuildTimeAnalyzerName} (default)
-                       - {DockGenConstants.FastAnalyzerName}
+                       - {DockGenConstants.DesignBuildTimeAnalyzerName}
+                       - {DockGenConstants.FastAnalyzerName} (default)
                        """;
         Required = false;
         Aliases.Add("-a");
-        DefaultValueFactory = _ => DockGenConstants.DesignBuildTimeAnalyzerName;
+        DefaultValueFactory = _ => DockGenConstants.FastAnalyzerName;
     }
 
     public override IEnumerable<CompletionItem> GetCompletions(CompletionContext context)

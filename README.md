@@ -36,53 +36,75 @@ dotnet tool install dockgen
 
 ## Usage
 
-You can use dock-gen with the `generate` command.
+### Command reference
 
-### Inputs
+| Command | Aliases | Description |
+|---|---|---|
+| `generate` | `g`, `gen` | Generate Dockerfiles for eligible projects discovered from `--solution` or `--directory`, or for a single project specified via `--project`. |
+| `update` | `u`, `upd` | Update Dockerfiles for eligible projects discovered from `--solution` or `--directory`, or for a single project specified via `--project`. By default rewrites the whole file; with `--only-references` updates only the project-reference `COPY` section inside the `build` stage and leaves the rest untouched. |
 
-You can provide these options to tell dock-gen where to find projects or solutions:
-```bash
---solution  (-s) : path to a solution file
---project   (-p) : path to a project file
---directory (-d) : path to a directory
-```
+### Global options
 
-If none of these options are provided, dock-gen will try to locate all projects inside the current directory recursively.
+| Option | Aliases | Type | Default | Description |
+|---|---|---|---|---|
+| `--verbose` | `--debug`, `--trace` | `bool` | `false` | Enable detailed logging (includes trace output). Use before the command name. |
 
-### Analyzer selection
+### generate (`g`, `gen`)
 
-`dock-gen` supports multiple analyzers that trade accuracy for performance.
+| Option | Aliases | Type | Default | Description |
+|---|---|---|---|---|
+| `--directory` | `-d` | `string` |  | Discover projects under a directory (recursively) and generate Dockerfiles for eligible projects. |
+| `--solution` | `-s` | `string` |  | Discover projects in a solution and generate Dockerfiles for eligible projects. |
+| `--project` | `-p` | `string` |  | Generate a Dockerfile for a single project. |
+| `--analyzer` | `-a` | `string` | `FastAnalyzer` | Analyzer to use: `FastAnalyzer`, `DesignBuildTimeAnalyzer`, `SimpleAnalyzer`. |
+| `--multi-arch` |  | `bool` | `true` | Generate a multi-arch Dockerfile (`FROM --platform=$BUILDPLATFORM`). |
 
-```bash
---analyzer (-a) : SimpleAnalyzer | DesignBuildTimeAnalyzer (default) | FastAnalyzer
-```
+If none of `--solution`, `--project`, or `--directory` are provided, dock-gen will try to locate all projects inside the current directory recursively.
 
-- `DesignBuildTimeAnalyzer` (default)
-  - Uses Buildalyzer and a design-time build.
-  - Slowest, but generally the most compatible with real-world MSBuild evaluation.
+### update (`u`, `upd`)
 
-- `SimpleAnalyzer`
-  - Uses MSBuild evaluation (`ProjectCollection.LoadProject`) without running a design-time build.
-  - Faster than `DesignBuildTimeAnalyzer`, but still depends on MSBuild evaluation and may be slower than `FastAnalyzer` on large solutions.
+| Option | Aliases | Type | Default | Description |
+|---|---|---|---|---|
+| `--directory` | `-d` | `string` |  | Discover projects under a directory (recursively) and update Dockerfiles for eligible projects. |
+| `--solution` | `-s` | `string` |  | Discover projects in a solution and update Dockerfiles for eligible projects. |
+| `--project` | `-p` | `string` |  | Update the Dockerfile for a single project. |
+| `--analyzer` | `-a` | `string` | `FastAnalyzer` | Analyzer to use: `FastAnalyzer`, `DesignBuildTimeAnalyzer`, `SimpleAnalyzer`. |
+| `--multi-arch` |  | `bool` | `true` | Generate a multi-arch Dockerfile (`FROM --platform=$BUILDPLATFORM`). |
+| `--only-references` |  | `bool` | `false` | Update only the project-reference `COPY` section in the existing Dockerfile. |
 
-- `FastAnalyzer`
-  - Optimized for speed and designed to avoid MSBuild project loading.
-  - Reads project files and common repo-wide MSBuild files directly (for example `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`).
-  - Best used when you want a fast dependency graph + enough properties for Dockerfile generation.
+If none of `--solution`, `--project`, or `--directory` are provided, dock-gen will try to locate all projects inside the current directory recursively.
 
 ### Examples
 
 Generate Dockerfiles for all projects in a solution:
 ```bash
-dotnet dockgen generate --solution .\Solution.sln
+dotnet dockgen generate --solution .\\Solution.sln
 ```
 
-Use the fast analyzer (recommended for large repos when you don’t need full MSBuild evaluation):
+Generate Dockerfiles (using alias):
 ```bash
-dotnet dockgen generate --analyzer FastAnalyzer --solution .\Solution.sln
+dotnet dockgen g --solution .\\Solution.sln
 ```
 
-If no solution or project file is specified, dock-gen will try to find projects under the current directory.
+Update Dockerfiles for all projects in a solution:
+```bash
+dotnet dockgen update --solution .\\Solution.sln
+```
+
+Update only the project reference COPY section in existing Dockerfiles:
+```bash
+dotnet dockgen update --solution .\\Solution.sln --only-references
+```
+
+Enable detailed logging (any of these is equivalent):
+```bash
+dotnet dockgen --verbose g --solution .\\Solution.sln
+```
+
+Use a non-default analyzer:
+```bash
+dotnet dockgen generate --analyzer DesignBuildTimeAnalyzer --solution .\\Solution.sln
+```
 
 ## Notes and limitations
 
