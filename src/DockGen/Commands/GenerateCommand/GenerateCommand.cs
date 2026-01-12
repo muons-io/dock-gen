@@ -10,7 +10,7 @@ public sealed class GenerateCommand : Command
     public static readonly ProjectOption ProjectOption = new ();
     public static readonly AnalyzerOption AnalyzerOption = new ();
 
-    public static readonly Argument<bool> MultiArchOption = new("--multi-arch")
+    public static readonly Option<bool> MultiArchOption = new("--multi-arch")
     {
         Description = "Build for multiple architectures. Default is true",
         DefaultValueFactory = _ => true
@@ -25,7 +25,6 @@ public sealed class GenerateCommand : Command
         Options.Add(SolutionOption);
         Options.Add(ProjectOption);
         Options.Add(AnalyzerOption);
-
-        Arguments.Add(MultiArchOption);
+        Options.Add(MultiArchOption);
     }
 }

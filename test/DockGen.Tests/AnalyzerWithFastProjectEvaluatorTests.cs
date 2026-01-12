@@ -13,6 +13,7 @@ namespace DockGen.Tests;
 public sealed class AnalyzerWithFastProjectEvaluatorTests
 {
     private readonly ILogger<Analyzer> _analyzerLogger = new Mock<ILogger<Analyzer>>().Object;
+    private readonly ILogger<FastProjectEvaluator> _fastEvaluatorLogger = new Mock<ILogger<FastProjectEvaluator>>().Object;
 
     static AnalyzerWithFastProjectEvaluatorTests()
     {
@@ -46,7 +47,7 @@ public sealed class AnalyzerWithFastProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object, _fastEvaluatorLogger);
 
         var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
@@ -100,7 +101,7 @@ public sealed class AnalyzerWithFastProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object, _fastEvaluatorLogger);
 
         var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
@@ -160,7 +161,7 @@ public sealed class AnalyzerWithFastProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object, _fastEvaluatorLogger);
 
         var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
@@ -231,7 +232,7 @@ public sealed class AnalyzerWithFastProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object, _fastEvaluatorLogger);
 
         var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
@@ -298,7 +299,7 @@ public sealed class AnalyzerWithFastProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object, _fastEvaluatorLogger);
 
         var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
@@ -345,7 +346,7 @@ public sealed class AnalyzerWithFastProjectEvaluatorTests
             .Setup(x => x.GetRelevantFilesAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object);
+        var fastProjectEvaluator = new FastProjectEvaluator(fileProvider, relevantFileLocatorMock.Object, _fastEvaluatorLogger);
         var analyzer = new Analyzer(_analyzerLogger, locatorMock.Object, fastProjectEvaluator, fastProjectEvaluator, fastProjectEvaluator);
 
         var request = new AnalyzerRequest(fileProvider.RootPath, "project", Analyzer: DockGenConstants.FastAnalyzerName);

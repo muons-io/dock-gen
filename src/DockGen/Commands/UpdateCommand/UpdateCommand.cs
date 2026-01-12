@@ -10,13 +10,13 @@ public sealed class UpdateCommand : Command
     public static readonly ProjectOption ProjectOption = new();
     public static readonly AnalyzerOption AnalyzerOption = new();
 
-    public static readonly Argument<bool> MultiArchOption = new("--multi-arch")
+    public static readonly Option<bool> MultiArchOption = new("--multi-arch")
     {
         Description = "Build for multiple architectures. Default is true",
         DefaultValueFactory = _ => true
     };
 
-    public static readonly Argument<bool> OnlyReferencesOption = new("--only-references")
+    public static readonly Option<bool> OnlyReferencesOption = new("--only-references")
     {
         Description = "Update only the project reference COPY section in existing Dockerfile. Default is false",
         DefaultValueFactory = _ => false
@@ -31,8 +31,7 @@ public sealed class UpdateCommand : Command
         Options.Add(SolutionOption);
         Options.Add(ProjectOption);
         Options.Add(AnalyzerOption);
-
-        Arguments.Add(MultiArchOption);
-        Arguments.Add(OnlyReferencesOption);
+        Options.Add(MultiArchOption);
+        Options.Add(OnlyReferencesOption);
     }
 }

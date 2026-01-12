@@ -2,6 +2,7 @@
 using DockGen.Generator.Constants;
 using DockGen.Generator.Locators;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
 
 namespace DockGen.Generator.Evaluators;
 
@@ -21,11 +22,13 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
 
     private readonly IFileProvider _fileProvider;
     private readonly IRelevantFileLocator _relevantFilesLocator;
+    private readonly ILogger<FastProjectEvaluator> _logger;
 
-    public FastProjectEvaluator(IFileProvider fileProvider, IRelevantFileLocator relevantFilesLocator)
+    public FastProjectEvaluator(IFileProvider fileProvider, IRelevantFileLocator relevantFilesLocator, ILogger<FastProjectEvaluator> logger)
     {
         _fileProvider = fileProvider;
         _relevantFilesLocator = relevantFilesLocator;
+        _logger = logger;
     }
 
     public async Task<EvaluatedProject> EvaluateAsync(
@@ -527,7 +530,7 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
             value.AsSpan(end + 1));
     }
 
-    private static string ReadProjectSdk(IFileInfo projectFile)
+    private string ReadProjectSdk(IFileInfo projectFile)
     {
         try
         {
@@ -569,8 +572,9 @@ public sealed class FastProjectEvaluator : IProjectEvaluator
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to read project SDK from {ProjectFilePath}", projectFile.PhysicalPath);
             return string.Empty;
         }
 
