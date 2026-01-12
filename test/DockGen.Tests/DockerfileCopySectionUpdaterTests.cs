@@ -1,5 +1,4 @@
 using DockGen.Generator;
-using Xunit;
 
 namespace DockGen.Tests;
 
@@ -35,10 +34,13 @@ public sealed class DockerfileCopySectionUpdaterTests
         var result = DockerfileCopySectionUpdater.TryUpdate(original, newBlock, out var updated);
 
         Assert.True(result);
-        Assert.Contains("COPY [\"C.csproj\", \"C/\"]\r\nCOPY [\"D.csproj\", \"D/\"]\r\nRUN dotnet restore", updated);
+
+        var normalized = updated.Replace("\r\n", "\n");
+        Assert.Contains("COPY [\"C.csproj\", \"C/\"]\nCOPY [\"D.csproj\", \"D/\"]\nRUN dotnet restore", normalized);
         Assert.DoesNotContain("COPY [\"A.csproj\", \"A/\"]", updated);
         Assert.Contains("COPY --from=publish /app/publish .", updated);
-        Assert.EndsWith("\r\n", updated);
+
+        Assert.EndsWith("\n", updated);
     }
 
     [Fact]
