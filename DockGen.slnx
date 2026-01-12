@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DockGen/DockGen.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/DockGen.Tests/DockGen.Tests.csproj" />
+  </Folder>
+</Solution>
