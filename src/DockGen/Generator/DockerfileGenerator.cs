@@ -17,51 +17,116 @@ public sealed class DockerfileGenerator
 
     public async Task GenerateDockerfileAsync(GeneratorConfiguration configuration, Project project, CancellationToken ct = default)
     {
+        var buildContext = await TryCreateBuildContextAsync(configuration, project, ct);
+        if (buildContext is null)
+        {
+            return;
+        }
+
+        var dockerfile = buildContext.Builder.Build();
+        var destinationFile = buildContext.DestinationFile;
+
+        try
+        {
+            _logger.LogInformation("Saving Dockerfile for project: {ProjectName}", project.ProjectName);
+            await SaveDockerfileAsync(dockerfile, destinationFile, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save Dockerfile");
+        }
+    }
+
+    public async Task UpdateDockerfileAsync(GeneratorConfiguration configuration, Project project, bool onlyReferences, CancellationToken ct = default)
+    {
+        var buildContext = await TryCreateBuildContextAsync(configuration, project, ct);
+        if (buildContext is null)
+        {
+            return;
+        }
+
+        var destinationFile = buildContext.DestinationFile;
+        if (!File.Exists(destinationFile))
+        {
+            _logger.LogWarning("Dockerfile not found for project: {ProjectName}", project.ProjectName);
+            return;
+        }
+
+        try
+        {
+            if (!onlyReferences)
+            {
+                var dockerfile = buildContext.Builder.Build();
+                _logger.LogInformation("Updating Dockerfile for project: {ProjectName}", project.ProjectName);
+                await SaveDockerfileAsync(dockerfile, destinationFile, ct);
+                return;
+            }
+
+            var original = await File.ReadAllTextAsync(destinationFile, ct);
+            var newCopyBlock = buildContext.Builder.BuildCopyRestoreBlock();
+
+            if (!DockerfileCopySectionUpdater.TryUpdate(original, newCopyBlock, out var updated))
+            {
+                _logger.LogWarning("Failed to locate COPY section in Dockerfile for project: {ProjectName}", project.ProjectName);
+                return;
+            }
+
+            _logger.LogInformation("Updating COPY section in Dockerfile for project: {ProjectName}", project.ProjectName);
+            await SaveDockerfileAsync(updated, destinationFile, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update Dockerfile");
+        }
+    }
+
+    private sealed record BuildContext(DockerfileBuilder Builder, string DestinationFile);
+
+    private async Task<BuildContext?> TryCreateBuildContextAsync(GeneratorConfiguration configuration, Project project, CancellationToken ct)
+    {
         var outputTypeResult = await _extractor.ExtractAsync(new OutputTypeExtractRequest(project.Properties), ct);
         if (!outputTypeResult.Extracted || !outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogTrace("Skipping library project {ProjectPath}", project.FullPath);
-            return;
+            _logger.LogTrace(
+                "Skipping Dockerfile for project {ProjectPath} because OutputType is not Exe (Extracted={Extracted}, Value={Value})",
+                project.FullPath,
+                outputTypeResult.Extracted,
+                outputTypeResult.Extracted ? outputTypeResult.Value : "<missing>");
+            return null;
         }
 
         var isTestProjectResult = await _extractor.ExtractAsync(new IsTestProjectExtractRequest(project.Properties), ct);
         if (isTestProjectResult.Extracted && isTestProjectResult.Value)
         {
-            _logger.LogTrace("Skipping test project {ProjectPath}", project.FullPath);
-            return;
+            _logger.LogTrace("Skipping Dockerfile for test project {ProjectPath}", project.FullPath);
+            return null;
         }
 
         var buildImageResult = await _extractor.ExtractAsync(new ContainerBuildImageExtractRequest(project.Properties), ct);
         if (!buildImageResult.Extracted)
         {
             _logger.LogError("Failed to get build image");
-            return;
+            return null;
         }
 
         var baseImageResult = await _extractor.ExtractAsync(new ContainerBaseImageExtractRequest(project.Properties), ct);
         if (!baseImageResult.Extracted)
         {
             _logger.LogError("Failed to get base image");
-            return;
+            return null;
         }
 
         var targetExtResult = await _extractor.ExtractAsync(new TargetExtExtractRequest(project.Properties), ct);
         var targetExt = targetExtResult.Extracted ? targetExtResult.Value : string.Empty;
         if (string.IsNullOrWhiteSpace(targetExt))
         {
-            targetExt = outputTypeResult.Value.Equals("Exe", StringComparison.OrdinalIgnoreCase) ? ".exe" : ".dll";
+            targetExt = ".dll";
         }
 
-        string targetName;
         var targetFileNameResult = await _extractor.ExtractAsync(new TargetNameExtractRequest(project.Properties), ct);
-        if (!targetFileNameResult.Extracted)
-        {
-            targetName = Path.GetFileNameWithoutExtension(project.ProjectName);
-        }
-        else
-        {
-            targetName = targetFileNameResult.Value;
-        }
+        var targetName = targetFileNameResult.Extracted
+            ? targetFileNameResult.Value
+            : Path.GetFileNameWithoutExtension(project.ProjectName);
 
         var dockerfileContextDirectory = configuration.DockerfileContextDirectory;
 
@@ -83,21 +148,9 @@ public sealed class DockerfileGenerator
             MultiArch = configuration.MultiArch
         };
 
-        var dockerfile = builder.Build();
+        var destinationFile = Path.Combine(project.ProjectDirectory, "Dockerfile");
 
-        var dockerfileName = "Dockerfile";
-
-        var destinationFile = Path.Combine(project.ProjectDirectory, dockerfileName);
-
-        try
-        {
-            _logger.LogInformation("Saving Dockerfile for project: {ProjectName}", project.ProjectName);
-            await SaveDockerfileAsync(dockerfile, destinationFile, ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save Dockerfile");
-        }
+        return new BuildContext(builder, destinationFile);
     }
 
     private static Dictionary<string, string> InitialCopyDictionary(string dockerfileContext, Project project)
